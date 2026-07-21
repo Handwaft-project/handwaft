@@ -4,6 +4,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from hand_params import get_hand_params
 from smoothing import Smoother
+from audio_engine import start_audio, stop_audio, send_to_audio, silence
 
 BaseOptions = python.BaseOptions
 HandLandmarker = vision.HandLandmarker
@@ -18,6 +19,8 @@ options = HandLandmarkerOptions(
 
 landmarker = HandLandmarker.create_from_options(options)
 smoother = Smoother(smoothing_factor=0.3)
+
+start_audio()
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
@@ -45,11 +48,13 @@ while True:
         for hand in result.hand_landmarks:
             params = get_hand_params(hand)
             smoothed_params = smoother.update_dict(params)
-            print(smoothed_params)
+            send_to_audio(smoothed_params)
             for landmark in hand:
                 x = int(landmark.x * w)
                 y = int(landmark.y * h)
                 cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+    else:
+        silence()
 
     cv2.imshow("Handwaft - Hand Tracking", frame)
     if cv2.waitKey(1) == ord('q'):
@@ -57,3 +62,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+stop_audio()
