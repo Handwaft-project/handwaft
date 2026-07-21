@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from hand_params import get_hand_params
 
 BaseOptions = python.BaseOptions
 HandLandmarker = vision.HandLandmarker
@@ -40,6 +41,8 @@ while True:
     if result.hand_landmarks:
         h, w, _ = frame.shape
         for hand in result.hand_landmarks:
+            params = get_hand_params(hand)
+            print(params)
             for landmark in hand:
                 x = int(landmark.x * w)
                 y = int(landmark.y * h)
