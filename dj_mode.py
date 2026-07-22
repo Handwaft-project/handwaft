@@ -1,3 +1,4 @@
+import sys
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
@@ -7,7 +8,10 @@ import soundfile as sf
 import numpy as np
 from hand_params import get_hand_params
 
-SONG_FILE = "song.wav"
+if len(sys.argv) > 1:
+    SONG_FILE = sys.argv[1]
+else:
+    SONG_FILE = "song.wav"
 
 data, SAMPLE_RATE = sf.read(SONG_FILE, dtype='float32')
 song_length = len(data)
@@ -96,14 +100,11 @@ while True:
         hand = result.hand_landmarks[0]
         params = get_hand_params(hand)
 
-        # Move hand left/right across the frame -> speed
         wrist_x = hand[0].x
         current_speed = map_range(wrist_x, 0.2, 0.8, 0.5, 1.5)
 
-        # Move hand up/down in the frame -> volume
         current_volume = map_range(params["height"], 0, 1, 0.05, 0.6)
 
-        # Fist vs open hand -> bass boost, clean ON/OFF
         current_bass = 1.0 if params["curl"] > 0.5 else 0.0
 
         h, w, _ = frame.shape
