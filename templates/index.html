@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handwaft — Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#090b12; --surface: rgba(255,255,255,0.045); --border: rgba(255,255,255,0.09);
+    --violet:#7b61ff; --teal:#2bd9c9; --coral:#ff6b4a; --text:#f2f1f8; --muted:#8c90a8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background:var(--bg); color:var(--text); font-family:'Inter', sans-serif; min-height:100vh; }
+  header{ display:flex; align-items:center; justify-content:space-between; padding:18px 32px; border-bottom:1px solid var(--border); }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .mark{ width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg, var(--violet), var(--teal));
+    display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:14px; color:#0a0a12; }
+  .brand span{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16px; }
+  .status{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); }
+  .dot{ width:8px; height:8px; border-radius:50%; background:var(--coral); }
+  .dot.live{ background:var(--teal); box-shadow:0 0 8px var(--teal); }
+
+  main{ display:grid; grid-template-columns: 1.4fr 1fr; gap:24px; padding:28px 32px; max-width:1200px; margin:0 auto; }
+  @media (max-width: 860px){ main{ grid-template-columns:1fr; } }
+
+  .stage{ position:relative; background:#000; border:1px solid var(--border); border-radius:18px; overflow:hidden; aspect-ratio: 4/3; }
+  .stage video{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  .stage canvas{ position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1); pointer-events:none; }
+  .stage .veil{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px;
+    background:rgba(9,11,18,0.92); text-align:center; padding:20px; z-index:2; }
+  .stage .veil button{ padding:12px 24px; border:none; border-radius:10px; background:linear-gradient(135deg, var(--violet), var(--teal));
+    color:#0a0a12; font-weight:700; font-family:'Inter', sans-serif; font-size:14px; cursor:pointer; }
+  .stage .veil p{ color:var(--muted); font-size:13px; max-width:280px; }
+
+  .panel{ display:flex; flex-direction:column; gap:18px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px; }
+  .card h2{ font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+
+  .ring-wrap{ display:flex; align-items:center; justify-content:center; padding:8px 0 18px; }
+  svg.ring{ width:180px; height:180px; }
+  .ring circle.track{ fill:none; stroke:rgba(255,255,255,0.06); stroke-width:8; }
+  .ring circle.arc{ fill:none; stroke-linecap:round; stroke-width:8; transition:stroke-dashoffset .12s linear; }
+
+  .readouts{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+  .readout{ background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+  .readout .label{ font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .readout .value{ font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:500; }
+  .readout.curl .value{ color:var(--violet); }
+  .readout.tilt .value{ color:var(--teal); }
+  .readout.spread .value{ color:#c792ff; }
+  .readout.height .value{ color:var(--coral); }
+
+  .mute-row{ display:flex; align-items:center; justify-content:space-between; margin-top:16px; }
+  .mute-row .label{ font-size:13px; color:var(--muted); }
+  .mute-badge{ display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+    background:rgba(255,255,255,0.04); border:1px solid var(--border); font-size:12px; }
+  .mute-badge.active{ border-color:var(--coral); color:var(--coral); }
+
+  .hint-list{ list-style:none; display:flex; flex-direction:column; gap:10px; font-size:13px; color:var(--muted); }
+  .hint-list li{ display:flex; gap:8px; align-items:flex-start; }
+  .hint-list b{ color:var(--text); }
+
+  .slider-row{ display:flex; flex-direction:column; gap:6px; margin-top:14px; }
+  .slider-row label{ font-size:12px; color:var(--muted); display:flex; justify-content:space-between; }
+  .slider-row input[type=range]{ width:100%; accent-color: var(--violet); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><div class="mark">H</div><span>Handwaft</span></div>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Camera off</span></div>
+</header>
+
+<main>
+  <div class="stage" id="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div class="veil" id="veil">
+      <p>Handwaft reads your hand through your webcam and turns it into sound — nothing is recorded or sent anywhere.</p>
+      <button id="startBtn">Start playing</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <h2>Gesture</h2>
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 180 180">
+          <circle class="track" cx="90" cy="90" r="80"/>
+          <circle class="track" cx="90" cy="90" r="64"/>
+          <circle class="track" cx="90" cy="90" r="48"/>
+          <circle class="track" cx="90" cy="90" r="32"/>
+          <circle class="arc" id="arcCurl"   cx="90" cy="90" r="80" stroke="#7b61ff" stroke-dasharray="502" stroke-dashoffset="502" transform="rotate(-90 90 90)"/>
+          <circle class="arc" id="arcTilt"   cx="90" cy="90" r="64" stroke="#2bd9c9" stroke-dasharray="402" stroke-dashoffset="402" transform="rotate(-90 90 90)"/>
+          <circle class="arc" id="arcSpread" cx="90" cy="90" r="48" stroke="#c792ff" stroke-dasharray="302" stroke-dashoffset="302" transform="rotate(-90 90 90)"/>
+          <circle class="arc" id="arcHeight" cx="90" cy="90" r="32" stroke="#ff6b4a" stroke-dasharray="201" stroke-dashoffset="201" transform="rotate(-90 90 90)"/>
+        </svg>
+      </div>
+      <div class="readouts">
+        <div class="readout curl"><div class="label">Curl</div><div class="value" id="valCurl">0.00</div></div>
+        <div class="readout tilt"><div class="label">Tilt</div><div class="value" id="valTilt">0.00</div></div>
+        <div class="readout spread"><div class="label">Spread</div><div class="value" id="valSpread">0.00</div></div>
+        <div class="readout height"><div class="label">Height</div><div class="value" id="valHeight">0.00</div></div>
+      </div>
+      <div class="mute-row">
+        <span class="label">Fist-close mute</span>
+        <span class="mute-badge" id="muteBadge">listening</span>
+      </div>
+      <div class="slider-row">
+        <label>Spread calibration <span id="spreadMaxLabel">0.35</span></label>
+        <input type="range" id="spreadMaxSlider" min="0.1" max="0.8" step="0.01" value="0.35">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>How it plays</h2>
+      <ul class="hint-list">
+        <li><b>Curl</b> — close your fingers to darken the tone (low-pass filter closes).</li>
+        <li><b>Tilt</b> — rotate your wrist to bend the pitch up or down.</li>
+        <li><b>Spread</b> — fan your fingers to widen the sound (adds a detuned second voice).</li>
+        <li><b>Height</b> — raise your hand to raise the volume; a closed fist mutes it.</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+  // ---------- UI refs ----------
+  const startBtn = document.getElementById('startBtn');
+  const veil = document.getElementById('veil');
+  const video = document.getElementById('video');
+  const overlay = document.getElementById('overlay');
+  const octx = overlay.getContext('2d');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const muteBadge = document.getElementById('muteBadge');
+  const spreadMaxSlider = document.getElementById('spreadMaxSlider');
+  const spreadMaxLabel = document.getElementById('spreadMaxLabel');
+
+  const arcs = {
+    curl:   { el: document.getElementById('arcCurl'),   circumference: 502 },
+    tilt:   { el: document.getElementById('arcTilt'),   circumference: 402 },
+    spread: { el: document.getElementById('arcSpread'), circumference: 302 },
+    height: { el: document.getElementById('arcHeight'), circumference: 201 },
+  };
+  const vals = {
+    curl: document.getElementById('valCurl'),
+    tilt: document.getElementById('valTilt'),
+    spread: document.getElementById('valSpread'),
+    height: document.getElementById('valHeight'),
+  };
+
+  // spread is an unbounded distance in hand_params.py — this slider lets you
+  // calibrate what "fully spread" looks like on your own hand/camera distance
+  let SPREAD_MAX = parseFloat(spreadMaxSlider.value);
+  spreadMaxSlider.addEventListener('input', () => {
+    SPREAD_MAX = parseFloat(spreadMaxSlider.value);
+    spreadMaxLabel.textContent = SPREAD_MAX.toFixed(2);
+  });
+
+  // ---------- hand_params.py, ported to JS ----------
+  function toArr(lm){ return [lm.x, lm.y, lm.z]; }
+  function dist(a, b){
+    return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+  }
+
+  function getCurl(landmarks){
+    const groups = [[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]];
+    const wrist = toArr(landmarks[0]);
+    let curls = [];
+    for(const [mcpI,pipI,dipI,tipI] of groups){
+      const mcp = toArr(landmarks[mcpI]);
+      const pip = toArr(landmarks[pipI]);
+      const dip = toArr(landmarks[dipI]);
+      const tip = toArr(landmarks[tipI]);
+      const straight = dist(wrist, tip);
+      const path = dist(wrist,mcp) + dist(mcp,pip) + dist(pip,dip) + dist(dip,tip);
+      curls.push(1 - (straight / path));
+    }
+    return curls.reduce((a,b)=>a+b,0) / curls.length;
+  }
+
+  function getTilt(landmarks){
+    const wrist = toArr(landmarks[0]);
+    const middleMcp = toArr(landmarks[9]);
+    const dx = middleMcp[0]-wrist[0], dy = middleMcp[1]-wrist[1], dz = middleMcp[2]-wrist[2];
+    const mag = Math.hypot(dx,dy,dz) + 1e-6;
+    return dx / mag;
+  }
+
+  function getSpread(landmarks){
+    const tipIdx = [4,8,12,16,20];
+    const tips = tipIdx.map(i => toArr(landmarks[i]));
+    let sum = 0;
+    for(let i=0;i<tips.length-1;i++) sum += dist(tips[i], tips[i+1]);
+    return sum / (tips.length - 1);
+  }
+
+  function getHeight(landmarks){
+    return 1 - landmarks[0].y;
+  }
+
+  function getHandParams(landmarks){
+    return {
+      curl: getCurl(landmarks),
+      tilt: getTilt(landmarks),
+      spread: getSpread(landmarks),
+      height: getHeight(landmarks),
+    };
+  }
+
+  // ---------- Web Audio synth ----------
+  let audioCtx, osc, osc2, gainNode, filterNode, osc2Gain;
+
+  function setupSynth(){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    osc = audioCtx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 220;
+
+    osc2 = audioCtx.createOscillator(); // second voice, used for "spread" width
+    osc2.type = 'sawtooth';
+    osc2.frequency.value = 220 * 1.01; // slightly detuned
+
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'lowpass';
+    filterNode.frequency.value = 4000;
+
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0;
+
+    osc2Gain = audioCtx.createGain();
+    osc2Gain.gain.value = 0;
+
+    osc.connect(filterNode);
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(filterNode);
+    filterNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    osc.start();
+    osc2.start();
+  }
+
+  function updateSynth({ curl, tilt, spread, height }){
+    const now = audioCtx.currentTime;
+
+    // tilt (-1..1) bends pitch +/- 7 semitones around 220Hz
+    const semitoneShift = tilt * 7;
+    const freq = 220 * Math.pow(2, semitoneShift / 12);
+    osc.frequency.setTargetAtTime(freq, now, 0.05);
+    osc2.frequency.setTargetAtTime(freq * 1.01, now, 0.05);
+
+    // curl (0..1) closes the filter — closed fist = darker tone
+    const cutoff = 300 + (1 - curl) * 5000;
+    filterNode.frequency.setTargetAtTime(cutoff, now, 0.05);
+
+    // spread (unbounded distance, normalized by calibration slider) blends in 2nd voice
+    const spreadNorm = Math.max(0, Math.min(1, spread / SPREAD_MAX));
+    osc2Gain.gain.setTargetAtTime(spreadNorm * 0.5, now, 0.05);
+
+    // height (0..1) controls volume; fist mutes
+    const muted = curl > 0.85;
+    const vol = muted ? 0 : height * 0.5;
+    gainNode.gain.setTargetAtTime(vol, now, 0.05);
+
+    muteBadge.classList.toggle('active', muted);
+    muteBadge.textContent = muted ? 'muted' : 'listening';
+
+    return spreadNorm;
+  }
+
+  // ---------- UI update ----------
+  function updateUI({ curl, tilt, spread, height }, spreadNorm){
+    const tiltNorm = (tilt + 1) / 2; // -1..1 -> 0..1 for the ring
+    const data = { curl, tilt: tiltNorm, spread: spreadNorm, height };
+    for(const key in data){
+      const v = Math.max(0, Math.min(1, data[key]));
+      const { el, circumference } = arcs[key];
+      el.style.strokeDashoffset = circumference * (1 - v);
+    }
+    vals.curl.textContent = curl.toFixed(2);
+    vals.tilt.textContent = tilt.toFixed(2);
+    vals.spread.textContent = spread.toFixed(3);
+    vals.height.textContent = height.toFixed(2);
+  }
+
+  function drawLandmarks(landmarks){
+    octx.clearRect(0,0,overlay.width, overlay.height);
+    octx.fillStyle = '#2bd9c9';
+    for(const lm of landmarks){
+      const x = lm.x * overlay.width;
+      const y = lm.y * overlay.height;
+      octx.beginPath();
+      octx.arc(x, y, 4, 0, Math.PI*2);
+      octx.fill();
+    }
+  }
+
+  // ---------- MediaPipe setup + loop ----------
+  let handLandmarker;
+  let running = false;
+
+  async function initHandLandmarker(){
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numHands: 1
+    });
+  }
+
+  function resizeOverlay(){
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+  }
+
+  function loop(){
+    if(!running) return;
+    if(video.readyState >= 2){
+      const results = handLandmarker.detectForVideo(video, performance.now());
+      if(results.landmarks && results.landmarks.length > 0){
+        const landmarks = results.landmarks[0];
+        drawLandmarks(landmarks);
+        const params = getHandParams(landmarks);
+        const spreadNorm = updateSynth(params);
+        updateUI(params, spreadNorm);
+      } else {
+        octx.clearRect(0,0,overlay.width, overlay.height);
+        gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  startBtn.addEventListener('click', async () => {
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      video.srcObject = stream;
+      await video.play();
+      resizeOverlay();
+
+      await initHandLandmarker();
+      setupSynth();
+
+      veil.style.display = 'none';
+      statusDot.classList.add('live');
+      statusText.textContent = 'Camera live';
+      running = true;
+      loop();
+    }catch(err){
+      statusText.textContent = 'Camera permission denied';
+      console.error(err);
+    }
+  });
+</script>
+</body>
+</html>

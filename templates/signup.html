@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handwaft — Sign Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#090b12; --surface: rgba(255,255,255,0.045); --border: rgba(255,255,255,0.09);
+    --violet:#7b61ff; --teal:#2bd9c9; --coral:#ff6b4a; --text:#f2f1f8; --muted:#8c90a8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background:var(--bg); color:var(--text); font-family:'Inter', sans-serif; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+  .waveform{ position:fixed; bottom:0; left:0; right:0; height:220px; display:flex; align-items:flex-end;
+    justify-content:center; gap:4px; opacity:0.35; z-index:0; }
+  .waveform span{ width:3px; background:linear-gradient(to top, var(--teal), var(--violet)); border-radius:2px;
+    animation:wave 2.4s ease-in-out infinite; }
+  @keyframes wave{ 0%,100%{height:14px; opacity:.5;} 50%{height:var(--h,90px); opacity:1;} }
+  .glow{ position:fixed; width:600px; height:600px; background:radial-gradient(circle, rgba(43,217,201,0.16), transparent 70%);
+    top:-200px; left:-200px; z-index:0; pointer-events:none; }
+  .card{ position:relative; z-index:1; width:400px; max-width:90vw; background:var(--surface); border:1px solid var(--border);
+    backdrop-filter:blur(18px); border-radius:20px; padding:40px 36px; }
+  .brand{ display:flex; align-items:center; gap:10px; margin-bottom:28px; }
+  .brand .mark{ width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg, var(--teal), var(--violet));
+    display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:16px; color:#0a0a12; }
+  .brand span{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px; }
+  h1{ font-family:'Space Grotesk', sans-serif; font-size:26px; font-weight:600; margin-bottom:6px; }
+  .sub{ color:var(--muted); font-size:14px; margin-bottom:28px; }
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .field input{ width:100%; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border);
+    border-radius:10px; color:var(--text); font-family:'Inter', sans-serif; font-size:14px; outline:none;
+    transition:border-color .2s ease, background .2s ease; }
+  .field input:focus{ border-color:var(--teal); background:rgba(43,217,201,0.06); }
+  .field input:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
+  .hint{ font-size:11px; color:var(--muted); margin-top:5px; }
+  .btn-primary{ width:100%; padding:13px; background:linear-gradient(135deg, var(--teal), #22b8a8); border:none;
+    border-radius:10px; color:#06110f; font-family:'Inter', sans-serif; font-weight:700; font-size:14px; cursor:pointer;
+    margin-top:6px; transition:transform .15s ease, box-shadow .15s ease; }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 8px 24px rgba(43,217,201,0.3); }
+  .btn-primary:focus-visible{ outline:2px solid var(--violet); outline-offset:2px; }
+  .divider{ display:flex; align-items:center; gap:12px; margin:24px 0 18px; color:var(--muted); font-size:12px; }
+  .divider::before, .divider::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .social{ display:flex; flex-direction:column; gap:10px; }
+  .btn-social{ display:flex; align-items:center; gap:10px; padding:11px 14px; background:rgba(255,255,255,0.03);
+    border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:13.5px; font-family:'Inter', sans-serif;
+    cursor:pointer; transition:background .2s ease, border-color .2s ease; }
+  .btn-social:hover{ background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.16); }
+  .btn-social:focus-visible{ outline:2px solid var(--violet); outline-offset:2px; }
+  .btn-social svg{ width:18px; height:18px; flex-shrink:0; }
+  .foot{ margin-top:26px; text-align:center; font-size:13px; color:var(--muted); }
+  .foot a{ color:var(--violet); text-decoration:none; font-weight:500; }
+  .foot a:hover{ text-decoration:underline; }
+  @media (prefers-reduced-motion: reduce){ .waveform span{ animation:none; height:40px; } }
+</style>
+</head>
+<body>
+
+<div class="glow"></div>
+<div class="waveform" id="waveform"></div>
+
+<div class="card">
+  <div class="brand">
+    <div class="mark">H</div>
+    <span>Handwaft</span>
+  </div>
+
+  <h1>Create your account</h1>
+  <p class="sub">Your webcam becomes the instrument.</p>
+
+  <form id="signupForm">
+    <div class="field">
+      <label for="name">Full name</label>
+      <input type="text" id="name" placeholder="Ada Lovelace" required>
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" required>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="At least 8 characters" minlength="8" required>
+      <div class="hint">Use 8+ characters. Mix letters and numbers for a stronger password.</div>
+    </div>
+    <button type="submit" class="btn-primary">Create account</button>
+  </form>
+
+  <div class="divider">or sign up with</div>
+
+  <div class="social">
+    <button class="btn-social" id="spotifySignup">
+      <svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.161-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.32-1.32 9.719-.66 13.439 1.62.36.181.54.78.301 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.6.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.3.421-1.02.599-1.56.3z"/></svg>
+      Sign up with Spotify
+    </button>
+    <button class="btn-social" id="googleSignup">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.48c-.28 1.5-1.13 2.78-2.4 3.63v3.02h3.88c2.27-2.09 3.56-5.17 3.56-8.84z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3.02c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.12C3.25 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.27a7.2 7.2 0 010-4.54V6.61H1.27a12 12 0 000 10.78l4-3.12z"/><path fill="#EA4335" d="M12 4.77c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.61l4 3.12C6.22 6.88 8.87 4.77 12 4.77z"/></svg>
+      Sign up with Google
+    </button>
+    <button class="btn-social" id="phoneSignup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      Sign up with phone number
+    </button>
+  </div>
+
+  <p class="foot">Already have an account? <a href="/login">Log in</a></p>
+</div>
+
+<script>
+  const wf = document.getElementById('waveform');
+  for(let i=0;i<48;i++){
+    const bar = document.createElement('span');
+    const h = 40 + Math.random()*140;
+    bar.style.setProperty('--h', h+'px');
+    bar.style.animationDelay = (Math.random()*2)+'s';
+    bar.style.animationDuration = (2 + Math.random()*1.5)+'s';
+    wf.appendChild(bar);
+  }
+
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    // TODO: backend — replace with your real signup endpoint
+    // const res = await fetch('/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, email, password}) });
+    // if (res.ok) window.location.href = '/index';
+
+    console.log('signup', name, email, password);
+    window.location.href = '/index'; // demo redirect
+  });
+
+  ['spotifySignup','googleSignup','phoneSignup'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      // TODO: backend — same OAuth/OTP redirects as login page
+      console.log(id, 'clicked');
+    });
+  });
+</script>
+</body>
+</html>
