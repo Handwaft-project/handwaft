@@ -58,6 +58,14 @@
     backdrop-filter:blur(6px); color:var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; }
   .dock-btn:hover{ border-color:var(--violet); color:var(--violet); }
   .dock-btn.help{ color:var(--teal); }
+  .dock-btn:hover{ border-color:var(--violet); color:var(--violet); }
+  .dock-btn.help{ color:var(--teal); }
+
+  .tune-mode-badge{ position:absolute; bottom:14px; left:14px; z-index:3; display:none; align-items:center; gap:10px;
+    background:rgba(9,11,18,0.85); backdrop-filter:blur(6px); border:1px solid var(--border); border-radius:999px;
+    padding:8px 14px; font-size:11.5px; max-width:90%; }
+  .tune-mode-badge.show{ display:flex; }
+  .tune-mode-badge button{ background:none; border:none; color:var(--coral); font-size:12px; cursor:pointer; font-weight:700; flex-shrink:0; }
 
   .panel{ display:flex; flex-direction:column; gap:18px; }
   .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px; }
@@ -177,6 +185,10 @@
       <button class="dock-btn" id="openPlaylists" title="Your playlists">📁</button>
       {% endif %}
       <button class="dock-btn help" id="openHelp" title="Instructions">?</button>
+    </div>
+    <div class="tune-mode-badge" id="tuneModeBadge">
+      🎵 Playing your tune — curl = tone, tilt = speed &amp; pitch, height = volume, spread = width
+      <button id="exitTuneMode">Exit</button>
     </div>
 
     <div class="veil" id="veil">
@@ -454,11 +466,19 @@
         drawLandmarks(landmarks);
         const params = getHandParams(landmarks);
         currentGesture = params;
-        const spreadNorm = updateSynth(params);
+        handDetected = true;
+        let spreadNorm;
+        if(handTuneMode){
+          gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05); // drone silent, your tune takes over
+          spreadNorm = Math.max(0, Math.min(1, params.spread / SPREAD_MAX));
+        } else {
+          spreadNorm = updateSynth(params);
+        }
         updateUI(params, spreadNorm);
       } else {
         octx.clearRect(0,0,overlay.width, overlay.height);
         gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        handDetected = false;
       }
     }
     requestAnimationFrame(loop);
@@ -681,6 +701,7 @@
   const notePitches = [523.25, 466.16, 392.00, 349.23, 293.66, 261.63];
   let tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
   let handTuneMode = false;
+  let handDetected = false;
   let currentGesture = { curl: 0, tilt: 0, spread: 0, height: 0.5 };
 
   function buildGrid(){
@@ -738,13 +759,32 @@
   }
   renderSavedTunes();
 
+ const tuneModeBadge = document.getElementById('tuneModeBadge');
+
   document.getElementById('tuneDone').addEventListener('click', () => {
     handTuneMode = true;
     tunesOverlay.classList.remove('open');
+    tuneModeBadge.classList.add('show');
     if(!tunePlaying) startTune();
   });
 
-  let tuneCtx, tuneTimer, tuneStep = 0, tunePlaying = false;
+  document.getElementById('exitTuneMode').addEventListener('click', () => {
+    handTuneMode = false;
+    tuneModeBadge.classList.remove('show');
+    stopTune();
+  });
+
+  let tuneCtx, tuneFilterNode, tuneTimer, tuneStep = 0, tunePlaying = false;
+
+  function ensureTuneAudio(){
+    if(!tuneCtx){
+      tuneCtx = new (window.AudioContext || window.webkitAudioContext)();
+      tuneFilterNode = tuneCtx.createBiquadFilter();
+      tuneFilterNode.type = 'lowpass';
+      tuneFilterNode.frequency.value = 4000;
+      tuneFilterNode.connect(tuneCtx.destination);
+    }
+  }
   const tunePlayBtn = document.getElementById('tunePlay');
 
   tunePlayBtn.addEventListener('click', () => {
@@ -752,25 +792,46 @@
   });
 
   function startTune(){
-    tuneCtx = tuneCtx || new (window.AudioContext || window.webkitAudioContext)();
+    ensureTuneAudio();
     tunePlaying = true;
     tuneStep = 0;
     tunePlayBtn.textContent = '⏸ Stop';
     const stepMs = () => 60000 / parseInt(tuneTempo.value) / 2;
     const tick = () => {
       document.querySelectorAll('.tune-cell').forEach(c => c.classList.remove('playing-col'));
+
+      // curl = tone: closed fist darkens the filter, just like the main instrument
+      tuneFilterNode.frequency.setTargetAtTime(
+        handTuneMode ? 300 + (1 - currentGesture.curl) * 5000 : 4000,
+        tuneCtx.currentTime, 0.05
+      );
+
+      const muted = handTuneMode && (currentGesture.curl > 0.85 || !handDetected);
+      const pitchShift = handTuneMode ? Math.pow(2, (currentGesture.tilt * 7) / 12) : 1;
+      const vol = handTuneMode ? currentGesture.height * 0.3 : 0.2;
+      const spreadNorm = handTuneMode ? Math.max(0, Math.min(1, currentGesture.spread / SPREAD_MAX)) : 0;
+
       for(let r = 0; r < ROWS; r++){
-        if(tuneState[r][tuneStep]){
-          const muted = handTuneMode && currentGesture.curl > 0.85;
-          if(!muted){
-            const osc = tuneCtx.createOscillator();
-            const g = tuneCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = notePitches[r];
-            g.gain.value = handTuneMode ? currentGesture.height * 0.3 : 0.2;
-            osc.connect(g); g.connect(tuneCtx.destination);
-            osc.start();
-            osc.stop(tuneCtx.currentTime + 0.25);
+        if(tuneState[r][tuneStep] && !muted){
+          const osc = tuneCtx.createOscillator();
+          const g = tuneCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = notePitches[r] * pitchShift;
+          g.gain.value = vol;
+          osc.connect(g); g.connect(tuneFilterNode);
+          osc.start();
+          osc.stop(tuneCtx.currentTime + 0.25);
+
+          // spread = width: fan your fingers to add a detuned second voice
+          if(spreadNorm > 0.15){
+            const osc2 = tuneCtx.createOscillator();
+            const g2 = tuneCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.value = notePitches[r] * pitchShift * 1.01;
+            g2.gain.value = vol * spreadNorm * 0.6;
+            osc2.connect(g2); g2.connect(tuneFilterNode);
+            osc2.start();
+            osc2.stop(tuneCtx.currentTime + 0.25);
           }
         }
         const cell = document.querySelector(`.tune-cell[data-row="${r}"][data-col="${tuneStep}"]`);
