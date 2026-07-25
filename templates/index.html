@@ -13,7 +13,7 @@
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{ background:var(--bg); color:var(--text); font-family:'Inter', sans-serif; min-height:100vh; }
-  header{ display:flex; align-items:center; justify-content:space-between; padding:18px 32px; border-bottom:1px solid var(--border); }
+  header{ display:flex; align-items:center; justify-content:space-between; padding:18px 32px; border-bottom:1px solid var(--border); gap:16px; flex-wrap:wrap; }
   .brand{ display:flex; align-items:center; gap:10px; }
   .brand .mark{ width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg, var(--violet), var(--teal));
     display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:14px; color:#0a0a12; }
@@ -26,6 +26,18 @@
   .spotify-tag{ display:flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border-radius:999px;
     border:1px solid var(--border); background:rgba(29,185,84,0.08); color:#1DB954; text-decoration:none; }
 
+  /* auth area */
+  .auth-area{ display:flex; align-items:center; gap:10px; }
+  .auth-btn{ padding:7px 16px; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none;
+    border:1px solid var(--border); color:var(--text); background:rgba(255,255,255,0.03); }
+  .auth-btn.primary{ background:linear-gradient(135deg, var(--violet), var(--teal)); color:#0a0a12; border:none; }
+  .user-chip{ display:flex; align-items:center; gap:8px; padding:5px 8px 5px 5px; border-radius:999px; border:1px solid var(--border); background:rgba(255,255,255,0.03); }
+  .user-chip .avatar{ width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg, var(--teal), var(--violet));
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#0a0a12; font-family:'Space Grotesk', sans-serif; }
+  .user-chip .uname{ font-size:12.5px; }
+  .user-chip .logout-btn{ font-size:11.5px; color:var(--muted); text-decoration:none; padding:4px 8px; border-radius:6px; }
+  .user-chip .logout-btn:hover{ color:var(--coral); background:rgba(255,107,74,0.1); }
+
   main{ display:grid; grid-template-columns: 1.4fr 1fr; gap:24px; padding:28px 32px; max-width:1200px; margin:0 auto; }
   @media (max-width: 860px){ main{ grid-template-columns:1fr; } }
 
@@ -37,6 +49,13 @@
   .stage .veil button{ padding:12px 24px; border:none; border-radius:10px; background:linear-gradient(135deg, var(--violet), var(--teal));
     color:#0a0a12; font-weight:700; font-family:'Inter', sans-serif; font-size:14px; cursor:pointer; }
   .stage .veil p{ color:var(--muted); font-size:13px; max-width:280px; }
+
+  /* icon dock on the stage */
+  .dock{ position:absolute; top:14px; right:14px; display:flex; flex-direction:column; gap:8px; z-index:3; }
+  .dock-btn{ width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:rgba(9,11,18,0.75);
+    backdrop-filter:blur(6px); color:var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; }
+  .dock-btn:hover{ border-color:var(--violet); color:var(--violet); }
+  .dock-btn.help{ color:var(--teal); }
 
   .panel{ display:flex; flex-direction:column; gap:18px; }
   .card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px; }
@@ -69,11 +88,59 @@
   .slider-row{ display:flex; flex-direction:column; gap:6px; margin-top:14px; }
   .slider-row label{ font-size:12px; color:var(--muted); display:flex; justify-content:space-between; }
   .slider-row input[type=range]{ width:100%; accent-color: var(--violet); }
+
+  /* instructions slide-out panel */
+  .instructions-panel{ position:fixed; top:0; right:-320px; width:300px; height:100%; background:#0d0f18; border-left:1px solid var(--border);
+    padding:22px; z-index:50; transition:right .25s ease; display:flex; flex-direction:column; gap:14px; }
+  .instructions-panel.open{ right:0; }
+  .instructions-panel h3{ font-family:'Space Grotesk', sans-serif; font-size:15px; display:flex; justify-content:space-between; align-items:center; }
+  .instructions-panel .close-x{ cursor:pointer; color:var(--muted); font-size:18px; background:none; border:none; }
+  .instructions-panel .close-x:hover{ color:var(--coral); }
+
+  /* modals */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(5,6,10,0.7); backdrop-filter:blur(3px); display:none;
+    align-items:center; justify-content:center; z-index:60; padding:20px; }
+  .modal-overlay.open{ display:flex; }
+  .modal{ width:100%; max-width:480px; max-height:80vh; overflow-y:auto; background:#0d0f18; border:1px solid var(--border);
+    border-radius:16px; padding:22px; }
+  .modal-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .modal-header h3{ font-family:'Space Grotesk', sans-serif; font-size:16px; }
+  .modal-header button{ background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; }
+  .modal-sub{ font-size:12px; color:var(--muted); margin-bottom:14px; }
+  .search-input{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.03);
+    color:var(--text); font-size:13px; margin-bottom:14px; }
+  .track-row{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; border:1px solid transparent; }
+  .track-row:hover{ background:rgba(255,255,255,0.03); }
+  .track-row img{ width:36px; height:36px; border-radius:6px; object-fit:cover; }
+  .track-meta{ flex:1; min-width:0; }
+  .track-meta .t{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .track-meta .a{ font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .track-row input[type=checkbox]{ accent-color: var(--violet); width:16px; height:16px; }
+  .track-row .play-btn{ width:28px; height:28px; border-radius:50%; border:1px solid var(--border); background:none; color:var(--teal); cursor:pointer; font-size:11px; }
+  .merge-bar{ display:none; margin-top:14px; padding:12px; border-radius:10px; background:rgba(123,97,255,0.08); border:1px solid rgba(123,97,255,0.3);
+    align-items:center; justify-content:space-between; gap:10px; }
+  .merge-bar.show{ display:flex; }
+  .merge-bar span{ font-size:12px; color:var(--muted); }
+  .merge-btn{ padding:8px 14px; border-radius:8px; border:none; background:linear-gradient(135deg, var(--violet), var(--teal)); color:#0a0a12; font-weight:700; font-size:12px; cursor:pointer; }
+  .playlist-row{ padding:10px 8px; border-radius:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+  .playlist-row:hover{ background:rgba(255,255,255,0.03); }
+  .playlist-row .cnt{ color:var(--muted); font-size:11.5px; }
+  .empty-note{ font-size:12.5px; color:var(--muted); padding:12px 0; }
+
+  /* tune maker */
+  .tune-grid{ display:grid; grid-template-rows:repeat(6, 1fr); gap:4px; margin-bottom:14px; }
+  .tune-row{ display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; }
+  .tune-cell{ aspect-ratio:1.4; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); cursor:pointer; }
+  .tune-cell.on{ background:linear-gradient(135deg, var(--violet), var(--teal)); border-color:transparent; }
+  .tune-cell.playing-col{ outline:1.5px solid var(--coral); }
+  .tune-controls{ display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .tune-controls button{ padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:12.5px; cursor:pointer; }
+  .tune-controls button.primary{ background:linear-gradient(135deg, var(--violet), var(--teal)); color:#0a0a12; font-weight:700; border:none; }
+  .tune-controls label{ font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px; }
 </style>
 </head>
 <body>
-
-<header>
+  <header>
   <div class="brand"><div class="mark">H</div><span>Handwaft</span></div>
   <div class="status">
     <button id="stopBtn">Stop</button>
@@ -84,12 +151,34 @@
     {% endif %}
     <span class="dot" id="statusDot"></span><span id="statusText">Camera off</span>
   </div>
+  <div class="auth-area">
+    {% if user_logged_in %}
+      <div class="user-chip">
+        <div class="avatar">{{ user_initial }}</div>
+        <span class="uname">{{ user_name }}</span>
+        <a href="/logout" class="logout-btn">Log out</a>
+      </div>
+    {% else %}
+      <a href="/login" class="auth-btn">Log in</a>
+      <a href="/signup" class="auth-btn primary">Sign up</a>
+    {% endif %}
+  </div>
 </header>
 
 <main>
   <div class="stage" id="stage">
     <video id="video" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
+
+    <div class="dock">
+      <button class="dock-btn" id="openSearch" title="Search music">🔍</button>
+      <button class="dock-btn" id="openTunes" title="Make your own tunes">🎹</button>
+      {% if spotify_connected %}
+      <button class="dock-btn" id="openPlaylists" title="Your playlists">📁</button>
+      {% endif %}
+      <button class="dock-btn help" id="openHelp" title="Instructions">?</button>
+    </div>
+
     <div class="veil" id="veil">
       <p>Handwaft reads your hand through your webcam and turns it into sound — nothing is recorded or sent anywhere.</p>
       <button id="startBtn">Start playing</button>
@@ -126,18 +215,73 @@
         <input type="range" id="spreadMaxSlider" min="0.1" max="0.8" step="0.01" value="0.35">
       </div>
     </div>
-
-    <div class="card">
-      <h2>How it plays</h2>
-      <ul class="hint-list">
-        <li><b>Curl</b> — close your fingers to darken the tone (low-pass filter closes).</li>
-        <li><b>Tilt</b> — rotate your wrist to bend the pitch up or down.</li>
-        <li><b>Spread</b> — fan your fingers to widen the sound (adds a detuned second voice).</li>
-        <li><b>Height</b> — raise your hand to raise the volume; a closed fist mutes it.</li>
-      </ul>
-    </div>
   </div>
 </main>
+
+<!-- Instructions side popup -->
+<div class="instructions-panel" id="instructionsPanel">
+  <h3>Instructions <button class="close-x" id="closeHelp">✕</button></h3>
+  <ul class="hint-list">
+    <li><b>Curl</b> — close your fingers to darken the tone (low-pass filter closes).</li>
+    <li><b>Tilt</b> — rotate your wrist to bend the pitch up or down.</li>
+    <li><b>Spread</b> — fan your fingers to widen the sound (adds a detuned second voice).</li>
+    <li><b>Height</b> — raise your hand to raise the volume; a closed fist mutes it.</li>
+    <li><b>Search 🔍</b> — find songs. Spotify users search their own library; everyone else searches a free built-in catalog.</li>
+    <li><b>Merge</b> — tick two search results, then merge & play them together.</li>
+    <li><b>Make tunes 🎹</b> — click the grid to place notes, then loop your own tune.</li>
+  </ul>
+</div>
+
+<!-- Search music modal -->
+<div class="modal-overlay" id="searchOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Search music</h3>
+      <button id="closeSearch">✕</button>
+    </div>
+    <div class="modal-sub" id="searchSub">
+      {% if spotify_connected %}
+        Searching your connected Spotify account.
+      {% else %}
+        No Spotify connected — searching a free built-in catalog, no external app needed.
+      {% endif %}
+    </div>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search for a song or artist…">
+    <div id="searchResults"></div>
+    <div class="merge-bar" id="mergeBar">
+      <span id="mergeLabel">0 of 2 selected</span>
+      <button class="merge-btn" id="mergeBtn" disabled>Merge &amp; play</button>
+    </div>
+  </div>
+</div>
+
+<!-- Playlists modal (Spotify only) -->
+<div class="modal-overlay" id="playlistsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Your playlists</h3>
+      <button id="closePlaylists">✕</button>
+    </div>
+    <div id="playlistsList"><div class="empty-note">Loading playlists…</div></div>
+  </div>
+</div>
+
+<!-- Make your own tunes modal -->
+<div class="modal-overlay" id="tunesOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Make your own tunes</h3>
+      <button id="closeTunes">✕</button>
+    </div>
+    <div class="modal-sub">Click cells to place notes — higher row is a higher pitch. Press play to loop it.</div>
+    <div class="tune-grid" id="tuneGrid"></div>
+    <div class="tune-controls">
+      <button class="primary" id="tunePlay">▶ Play</button>
+      <button id="tuneClear">Clear</button>
+      <label>Tempo <input type="range" id="tuneTempo" min="80" max="240" value="140" style="width:80px; accent-color:var(--violet);"></label>
+    </div>
+  </div>
+</div>
 
 <script type="module">
   import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -217,7 +361,6 @@
     filterNode.connect(gainNode); gainNode.connect(audioCtx.destination);
     osc.start(); osc2.start();
   }
-
   function updateSynth({ curl, tilt, spread, height }){
     const now = audioCtx.currentTime;
     const freq = 220 * Math.pow(2, (tilt * 7) / 12);
@@ -227,7 +370,6 @@
     const spreadNorm = Math.max(0, Math.min(1, spread / SPREAD_MAX));
     osc2Gain.gain.setTargetAtTime(spreadNorm * 0.5, now, 0.05);
     const muted = curl > 0.85;
-    // volume cap lowered from 0.5 to 0.25 — was too harsh/buzzy at full range
     gainNode.gain.setTargetAtTime(muted ? 0 : height * 0.25, now, 0.05);
     muteBadge.classList.toggle('active', muted);
     muteBadge.textContent = muted ? 'muted' : 'listening';
@@ -333,6 +475,251 @@
       console.error(err);
     }
   });
+
+  /* ---------- Instructions side panel ---------- */
+  const instructionsPanel = document.getElementById('instructionsPanel');
+  document.getElementById('openHelp').addEventListener('click', () => instructionsPanel.classList.add('open'));
+  document.getElementById('closeHelp').addEventListener('click', () => instructionsPanel.classList.remove('open'));
+
+ /* ---------- Search music modal ---------- */
+  const SPOTIFY_CONNECTED = !!document.querySelector('.spotify-tag')?.textContent.includes('Spotify connected');
+
+  const searchOverlay = document.getElementById('searchOverlay');
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  const mergeBar = document.getElementById('mergeBar');
+  const mergeLabel = document.getElementById('mergeLabel');
+  const mergeBtn = document.getElementById('mergeBtn');
+
+  document.getElementById('openSearch').addEventListener('click', () => {
+    searchOverlay.classList.add('open');
+    searchInput.focus();
+  });
+  document.getElementById('closeSearch').addEventListener('click', () => searchOverlay.classList.remove('open'));
+
+  let selectedTracks = [];
+  let searchDebounce;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    const q = searchInput.value.trim();
+    if(!q){ searchResults.innerHTML = ''; return; }
+    searchDebounce = setTimeout(() => runSearch(q), 350);
+  });
+
+  async function runSearch(query){
+    searchResults.innerHTML = '<div class="empty-note">Searching…</div>';
+    try{
+      let items = [];
+      if(SPOTIFY_CONNECTED){
+        // Backend proxy that holds the user's Spotify access token server-side.
+        // Expected shape: [{ id, title, artist, artwork, previewUrl, externalUrl }]
+        const res = await fetch('/api/spotify/search?q=' + encodeURIComponent(query));
+        const data = await res.json();
+        items = data.items || [];
+      } else {
+        // No Spotify connected — fall back to Apple's free, keyless iTunes
+        // Search API so users can still find and preview songs.
+        const res = await fetch('https://itunes.apple.com/search?media=music&limit=15&term=' + encodeURIComponent(query));
+        const data = await res.json();
+        items = (data.results || []).map(r => ({
+          id: String(r.trackId),
+          title: r.trackName,
+          artist: r.artistName,
+          artwork: r.artworkUrl60,
+          previewUrl: r.previewUrl,
+          externalUrl: r.trackViewUrl
+        }));
+      }
+      renderResults(items);
+    }catch(err){
+      searchResults.innerHTML = '<div class="empty-note">Search failed — try again.</div>';
+      console.error(err);
+    }
+  }
+
+  function renderResults(items){
+    if(!items.length){ searchResults.innerHTML = '<div class="empty-note">No results.</div>'; return; }
+    searchResults.innerHTML = '';
+    items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'track-row';
+      row.innerHTML = `
+        <input type="checkbox" data-id="${item.id}">
+        <img src="${item.artwork || ''}" onerror="this.style.visibility='hidden'">
+        <div class="track-meta">
+          <div class="t">${item.title}</div>
+          <div class="a">${item.artist}</div>
+        </div>
+        <button class="play-btn">▶</button>
+      `;
+      const checkbox = row.querySelector('input');
+      const playBtn = row.querySelector('.play-btn');
+      let previewAudio = null;
+
+      checkbox.addEventListener('change', () => {
+        if(checkbox.checked){
+          if(selectedTracks.length >= 2){ checkbox.checked = false; return; }
+          selectedTracks.push(item);
+        } else {
+          selectedTracks = selectedTracks.filter(t => t.id !== item.id);
+        }
+        updateMergeBar();
+      });
+
+      playBtn.addEventListener('click', () => {
+        if(!item.previewUrl) return;
+        if(previewAudio && !previewAudio.paused){ previewAudio.pause(); playBtn.textContent = '▶'; return; }
+        document.querySelectorAll('.play-btn').forEach(b => b.textContent = '▶');
+        previewAudio = new Audio(item.previewUrl);
+        previewAudio.play();
+        playBtn.textContent = '⏸';
+        previewAudio.onended = () => playBtn.textContent = '▶';
+      });
+
+      searchResults.appendChild(row);
+    });
+  }
+  function updateMergeBar(){
+    mergeLabel.textContent = `${selectedTracks.length} of 2 selected`;
+    mergeBar.classList.toggle('show', selectedTracks.length > 0);
+    mergeBtn.disabled = selectedTracks.length !== 2;
+  }
+
+  mergeBtn.addEventListener('click', () => {
+    const withPreview = selectedTracks.filter(t => t.previewUrl);
+    if(withPreview.length < 2){ alert('Both selected tracks need a playable preview to merge.'); return; }
+    const mergeCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const mixGain = mergeCtx.createGain();
+    mixGain.gain.value = 0.8;
+    mixGain.connect(mergeCtx.destination);
+    withPreview.slice(0, 2).forEach(t => {
+      const el = new Audio(t.previewUrl);
+      el.crossOrigin = 'anonymous';
+      const src = mergeCtx.createMediaElementSource(el);
+      src.connect(mixGain);
+      el.play();
+    });
+  });
+
+  /* ---------- Playlists modal (Spotify only) ---------- */
+  const playlistsOverlay = document.getElementById('playlistsOverlay');
+  const playlistsBtn = document.getElementById('openPlaylists');
+  if(playlistsBtn){
+    playlistsBtn.addEventListener('click', async () => {
+      playlistsOverlay.classList.add('open');
+      const list = document.getElementById('playlistsList');
+      list.innerHTML = '<div class="empty-note">Loading playlists…</div>';
+      try{
+        // Backend proxy: GET /api/spotify/playlists -> [{ id, name, trackCount }]
+        const res = await fetch('/api/spotify/playlists');
+        const data = await res.json();
+        const playlists = data.playlists || [];
+        if(!playlists.length){ list.innerHTML = '<div class="empty-note">No playlists found on this account.</div>'; return; }
+        list.innerHTML = '';
+        playlists.forEach(p => {
+          const row = document.createElement('div');
+          row.className = 'playlist-row';
+          row.innerHTML = `<span>${p.name}</span><span class="cnt">${p.trackCount} tracks</span>`;
+          row.addEventListener('click', () => openPlaylist(p.id, p.name));
+          list.appendChild(row);
+        });
+      }catch(err){
+        list.innerHTML = '<div class="empty-note">Could not load playlists.</div>';
+        console.error(err);
+      }
+    });
+  }
+  document.getElementById('closePlaylists').addEventListener('click', () => playlistsOverlay.classList.remove('open'));
+
+  async function openPlaylist(id, name){
+    const list = document.getElementById('playlistsList');
+    list.innerHTML = `<div class="empty-note">Loading “${name}”…</div>`;
+    try{
+      const res = await fetch(`/api/spotify/playlists/${id}/tracks`);
+      const data = await res.json();
+      renderResults(data.items || []);
+      playlistsOverlay.classList.remove('open');
+      searchOverlay.classList.add('open');
+    }catch(err){
+      list.innerHTML = '<div class="empty-note">Could not open playlist.</div>';
+    }
+  }
+
+  /* ---------- Make your own tunes ---------- */
+  const tunesOverlay = document.getElementById('tunesOverlay');
+  const tuneGrid = document.getElementById('tuneGrid');
+  const tuneTempo = document.getElementById('tuneTempo');
+  const STEPS = 8, ROWS = 6;
+  const notePitches = [523.25, 466.16, 392.00, 349.23, 293.66, 261.63]; // high to low
+  let tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
+
+  function buildGrid(){
+    tuneGrid.innerHTML = '';
+    for(let r = 0; r < ROWS; r++){
+      const rowEl = document.createElement('div');
+      rowEl.className = 'tune-row';
+      for(let c = 0; c < STEPS; c++){
+        const cell = document.createElement('div');
+        cell.className = 'tune-cell';
+        cell.dataset.row = r; cell.dataset.col = c;
+        cell.addEventListener('click', () => {
+          tuneState[r][c] = !tuneState[r][c];
+          cell.classList.toggle('on', tuneState[r][c]);
+        });
+        rowEl.appendChild(cell);
+      }
+      tuneGrid.appendChild(rowEl);
+    }
+  }
+  buildGrid();
+
+  document.getElementById('openTunes').addEventListener('click', () => tunesOverlay.classList.add('open'));
+  document.getElementById('closeTunes').addEventListener('click', () => { tunesOverlay.classList.remove('open'); stopTune(); });
+  document.getElementById('tuneClear').addEventListener('click', () => {
+    tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
+    buildGrid();
+  });
+
+  let tuneCtx, tuneTimer, tuneStep = 0, tunePlaying = false;
+  const tunePlayBtn = document.getElementById('tunePlay');
+
+  tunePlayBtn.addEventListener('click', () => {
+    tunePlaying ? stopTune() : startTune();
+  });
+
+  function startTune(){
+    tuneCtx = tuneCtx || new (window.AudioContext || window.webkitAudioContext)();
+    tunePlaying = true;
+    tuneStep = 0;
+    tunePlayBtn.textContent = '⏸ Stop';
+    const stepMs = () => 60000 / parseInt(tuneTempo.value) / 2;
+    const tick = () => {
+      document.querySelectorAll('.tune-cell').forEach(c => c.classList.remove('playing-col'));
+      for(let r = 0; r < ROWS; r++){
+        if(tuneState[r][tuneStep]){
+          const osc = tuneCtx.createOscillator();
+          const g = tuneCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = notePitches[r];
+          g.gain.value = 0.2;
+          osc.connect(g); g.connect(tuneCtx.destination);
+          osc.start();
+          osc.stop(tuneCtx.currentTime + 0.25);
+        }
+        document.querySelector(`.tune-cell[data-row="${r}"][data-col="${tuneStep}"]`).classList.add('playing-col');
+      }
+      tuneStep = (tuneStep + 1) % STEPS;
+      tuneTimer = setTimeout(tick, stepMs());
+    };
+    tick();
+  }
+
+  function stopTune(){
+    tunePlaying = false;
+    tunePlayBtn.textContent = '▶ Play';
+    clearTimeout(tuneTimer);
+    document.querySelectorAll('.tune-cell').forEach(c => c.classList.remove('playing-col'));
+  }
 </script>
 </body>
 </html>
