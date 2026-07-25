@@ -18,9 +18,13 @@
   .brand .mark{ width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg, var(--violet), var(--teal));
     display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:14px; color:#0a0a12; }
   .brand span{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16px; }
-  .status{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); }
+  .status{ display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--muted); }
   .dot{ width:8px; height:8px; border-radius:50%; background:var(--coral); }
   .dot.live{ background:var(--teal); box-shadow:0 0 8px var(--teal); }
+  #stopBtn{ display:none; padding:6px 14px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(255,107,74,0.12); color:var(--coral); font-size:12px; cursor:pointer; }
+  .spotify-tag{ display:flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border-radius:999px;
+    border:1px solid var(--border); background:rgba(29,185,84,0.08); color:#1DB954; text-decoration:none; }
 
   main{ display:grid; grid-template-columns: 1.4fr 1fr; gap:24px; padding:28px 32px; max-width:1200px; margin:0 auto; }
   @media (max-width: 860px){ main{ grid-template-columns:1fr; } }
@@ -71,7 +75,15 @@
 
 <header>
   <div class="brand"><div class="mark">H</div><span>Handwaft</span></div>
-  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Camera off</span></div>
+  <div class="status">
+    <button id="stopBtn">Stop</button>
+    {% if spotify_connected %}
+      <span class="spotify-tag">● Spotify connected</span>
+    {% else %}
+      <a href="/login/spotify" class="spotify-tag" style="opacity:0.7;">Connect Spotify</a>
+    {% endif %}
+    <span class="dot" id="statusDot"></span><span id="statusText">Camera off</span>
+  </div>
 </header>
 
 <main>
@@ -130,8 +142,8 @@
 <script type="module">
   import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-  // ---------- UI refs ----------
   const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
   const veil = document.getElementById('veil');
   const video = document.getElementById('video');
   const overlay = document.getElementById('overlay');
@@ -155,130 +167,75 @@
     height: document.getElementById('valHeight'),
   };
 
-  // spread is an unbounded distance in hand_params.py — this slider lets you
-  // calibrate what "fully spread" looks like on your own hand/camera distance
   let SPREAD_MAX = parseFloat(spreadMaxSlider.value);
   spreadMaxSlider.addEventListener('input', () => {
     SPREAD_MAX = parseFloat(spreadMaxSlider.value);
     spreadMaxLabel.textContent = SPREAD_MAX.toFixed(2);
   });
 
-  // ---------- hand_params.py, ported to JS ----------
   function toArr(lm){ return [lm.x, lm.y, lm.z]; }
-  function dist(a, b){
-    return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
-  }
+  function dist(a, b){ return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); }
 
   function getCurl(landmarks){
     const groups = [[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]];
     const wrist = toArr(landmarks[0]);
     let curls = [];
     for(const [mcpI,pipI,dipI,tipI] of groups){
-      const mcp = toArr(landmarks[mcpI]);
-      const pip = toArr(landmarks[pipI]);
-      const dip = toArr(landmarks[dipI]);
-      const tip = toArr(landmarks[tipI]);
+      const mcp = toArr(landmarks[mcpI]), pip = toArr(landmarks[pipI]), dip = toArr(landmarks[dipI]), tip = toArr(landmarks[tipI]);
       const straight = dist(wrist, tip);
       const path = dist(wrist,mcp) + dist(mcp,pip) + dist(pip,dip) + dist(dip,tip);
       curls.push(1 - (straight / path));
     }
     return curls.reduce((a,b)=>a+b,0) / curls.length;
   }
-
   function getTilt(landmarks){
-    const wrist = toArr(landmarks[0]);
-    const middleMcp = toArr(landmarks[9]);
+    const wrist = toArr(landmarks[0]), middleMcp = toArr(landmarks[9]);
     const dx = middleMcp[0]-wrist[0], dy = middleMcp[1]-wrist[1], dz = middleMcp[2]-wrist[2];
-    const mag = Math.hypot(dx,dy,dz) + 1e-6;
-    return dx / mag;
+    return dx / (Math.hypot(dx,dy,dz) + 1e-6);
   }
-
   function getSpread(landmarks){
-    const tipIdx = [4,8,12,16,20];
-    const tips = tipIdx.map(i => toArr(landmarks[i]));
+    const tips = [4,8,12,16,20].map(i => toArr(landmarks[i]));
     let sum = 0;
     for(let i=0;i<tips.length-1;i++) sum += dist(tips[i], tips[i+1]);
     return sum / (tips.length - 1);
   }
-
-  function getHeight(landmarks){
-    return 1 - landmarks[0].y;
-  }
-
+  function getHeight(landmarks){ return 1 - landmarks[0].y; }
   function getHandParams(landmarks){
-    return {
-      curl: getCurl(landmarks),
-      tilt: getTilt(landmarks),
-      spread: getSpread(landmarks),
-      height: getHeight(landmarks),
-    };
+    return { curl: getCurl(landmarks), tilt: getTilt(landmarks), spread: getSpread(landmarks), height: getHeight(landmarks) };
   }
 
-  // ---------- Web Audio synth ----------
   let audioCtx, osc, osc2, gainNode, filterNode, osc2Gain;
 
   function setupSynth(){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    osc = audioCtx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 220;
-
-    osc2 = audioCtx.createOscillator(); // second voice, used for "spread" width
-    osc2.type = 'sawtooth';
-    osc2.frequency.value = 220 * 1.01; // slightly detuned
-
-    filterNode = audioCtx.createBiquadFilter();
-    filterNode.type = 'lowpass';
-    filterNode.frequency.value = 4000;
-
-    gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0;
-
-    osc2Gain = audioCtx.createGain();
-    osc2Gain.gain.value = 0;
-
-    osc.connect(filterNode);
-    osc2.connect(osc2Gain);
-    osc2Gain.connect(filterNode);
-    filterNode.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    osc.start();
-    osc2.start();
+    osc = audioCtx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 220;
+    osc2 = audioCtx.createOscillator(); osc2.type = 'sawtooth'; osc2.frequency.value = 220 * 1.01;
+    filterNode = audioCtx.createBiquadFilter(); filterNode.type = 'lowpass'; filterNode.frequency.value = 4000;
+    gainNode = audioCtx.createGain(); gainNode.gain.value = 0;
+    osc2Gain = audioCtx.createGain(); osc2Gain.gain.value = 0;
+    osc.connect(filterNode); osc2.connect(osc2Gain); osc2Gain.connect(filterNode);
+    filterNode.connect(gainNode); gainNode.connect(audioCtx.destination);
+    osc.start(); osc2.start();
   }
 
   function updateSynth({ curl, tilt, spread, height }){
     const now = audioCtx.currentTime;
-
-    // tilt (-1..1) bends pitch +/- 7 semitones around 220Hz
-    const semitoneShift = tilt * 7;
-    const freq = 220 * Math.pow(2, semitoneShift / 12);
+    const freq = 220 * Math.pow(2, (tilt * 7) / 12);
     osc.frequency.setTargetAtTime(freq, now, 0.05);
     osc2.frequency.setTargetAtTime(freq * 1.01, now, 0.05);
-
-    // curl (0..1) closes the filter — closed fist = darker tone
-    const cutoff = 300 + (1 - curl) * 5000;
-    filterNode.frequency.setTargetAtTime(cutoff, now, 0.05);
-
-    // spread (unbounded distance, normalized by calibration slider) blends in 2nd voice
+    filterNode.frequency.setTargetAtTime(300 + (1 - curl) * 5000, now, 0.05);
     const spreadNorm = Math.max(0, Math.min(1, spread / SPREAD_MAX));
     osc2Gain.gain.setTargetAtTime(spreadNorm * 0.5, now, 0.05);
-
-    // height (0..1) controls volume; fist mutes
     const muted = curl > 0.85;
-    const vol = muted ? 0 : height * 0.5;
-    gainNode.gain.setTargetAtTime(vol, now, 0.05);
-
+    // volume cap lowered from 0.5 to 0.25 — was too harsh/buzzy at full range
+    gainNode.gain.setTargetAtTime(muted ? 0 : height * 0.25, now, 0.05);
     muteBadge.classList.toggle('active', muted);
     muteBadge.textContent = muted ? 'muted' : 'listening';
-
     return spreadNorm;
   }
 
-  // ---------- UI update ----------
   function updateUI({ curl, tilt, spread, height }, spreadNorm){
-    const tiltNorm = (tilt + 1) / 2; // -1..1 -> 0..1 for the ring
+    const tiltNorm = (tilt + 1) / 2;
     const data = { curl, tilt: tiltNorm, spread: spreadNorm, height };
     for(const key in data){
       const v = Math.max(0, Math.min(1, data[key]));
@@ -303,7 +260,6 @@
     }
   }
 
-  // ---------- MediaPipe setup + loop ----------
   let handLandmarker;
   let running = false;
 
@@ -344,6 +300,18 @@
     requestAnimationFrame(loop);
   }
 
+  stopBtn.addEventListener('click', () => {
+    running = false;
+    if(gainNode) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+    if(video.srcObject){
+      video.srcObject.getTracks().forEach(t => t.stop());
+    }
+    veil.style.display = 'flex';
+    stopBtn.style.display = 'none';
+    statusDot.classList.remove('live');
+    statusText.textContent = 'Camera off';
+  });
+
   startBtn.addEventListener('click', async () => {
     try{
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -357,6 +325,7 @@
       veil.style.display = 'none';
       statusDot.classList.add('live');
       statusText.textContent = 'Camera live';
+      stopBtn.style.display = 'inline-block';
       running = true;
       loop();
     }catch(err){
