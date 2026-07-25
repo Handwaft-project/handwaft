@@ -26,7 +26,6 @@
   .spotify-tag{ display:flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border-radius:999px;
     border:1px solid var(--border); background:rgba(29,185,84,0.08); color:#1DB954; text-decoration:none; }
 
-  /* auth area */
   .auth-area{ display:flex; align-items:center; gap:10px; }
   .auth-btn{ padding:7px 16px; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none;
     border:1px solid var(--border); color:var(--text); background:rgba(255,255,255,0.03); }
@@ -45,12 +44,15 @@
   .stage video{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
   .stage canvas{ position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1); pointer-events:none; }
   .stage .veil{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px;
-    background:rgba(9,11,18,0.92); text-align:center; padding:20px; z-index:2; }
+    background:rgba(9,11,18,0.92); text-align:center; padding:20px; z-index:2;
+    opacity:1; transition:opacity .35s ease; }
+  .stage .veil.hidden{ opacity:0; pointer-events:none; }
   .stage .veil button{ padding:12px 24px; border:none; border-radius:10px; background:linear-gradient(135deg, var(--violet), var(--teal));
     color:#0a0a12; font-weight:700; font-family:'Inter', sans-serif; font-size:14px; cursor:pointer; }
+  .stage .veil button:disabled{ opacity:0.5; cursor:wait; }
   .stage .veil p{ color:var(--muted); font-size:13px; max-width:280px; }
+  .stage .veil .prep{ font-size:11.5px; color:var(--teal); }
 
-  /* icon dock on the stage */
   .dock{ position:absolute; top:14px; right:14px; display:flex; flex-direction:column; gap:8px; z-index:3; }
   .dock-btn{ width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:rgba(9,11,18,0.75);
     backdrop-filter:blur(6px); color:var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; }
@@ -89,7 +91,6 @@
   .slider-row label{ font-size:12px; color:var(--muted); display:flex; justify-content:space-between; }
   .slider-row input[type=range]{ width:100%; accent-color: var(--violet); }
 
-  /* instructions slide-out panel */
   .instructions-panel{ position:fixed; top:0; right:-320px; width:300px; height:100%; background:#0d0f18; border-left:1px solid var(--border);
     padding:22px; z-index:50; transition:right .25s ease; display:flex; flex-direction:column; gap:14px; }
   .instructions-panel.open{ right:0; }
@@ -97,7 +98,6 @@
   .instructions-panel .close-x{ cursor:pointer; color:var(--muted); font-size:18px; background:none; border:none; }
   .instructions-panel .close-x:hover{ color:var(--coral); }
 
-  /* modals */
   .modal-overlay{ position:fixed; inset:0; background:rgba(5,6,10,0.7); backdrop-filter:blur(3px); display:none;
     align-items:center; justify-content:center; z-index:60; padding:20px; }
   .modal-overlay.open{ display:flex; }
@@ -127,20 +127,20 @@
   .playlist-row .cnt{ color:var(--muted); font-size:11.5px; }
   .empty-note{ font-size:12.5px; color:var(--muted); padding:12px 0; }
 
-  /* tune maker */
   .tune-grid{ display:grid; grid-template-rows:repeat(6, 1fr); gap:4px; margin-bottom:14px; }
   .tune-row{ display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; }
   .tune-cell{ aspect-ratio:1.4; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); cursor:pointer; }
   .tune-cell.on{ background:linear-gradient(135deg, var(--violet), var(--teal)); border-color:transparent; }
   .tune-cell.playing-col{ outline:1.5px solid var(--coral); }
-  .tune-controls{ display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .tune-controls{ display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
   .tune-controls button{ padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); color:var(--text); font-size:12.5px; cursor:pointer; }
   .tune-controls button.primary{ background:linear-gradient(135deg, var(--violet), var(--teal)); color:#0a0a12; font-weight:700; border:none; }
   .tune-controls label{ font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px; }
 </style>
 </head>
 <body>
-  <header>
+
+<header>
   <div class="brand"><div class="mark">H</div><span>Handwaft</span></div>
   <div class="status">
     <button id="stopBtn">Stop</button>
@@ -149,7 +149,7 @@
     {% else %}
       <a href="/login/spotify" class="spotify-tag" style="opacity:0.7;">Connect Spotify</a>
     {% endif %}
-    <span class="dot" id="statusDot"></span><span id="statusText">Camera off</span>
+    <span class="dot" id="statusDot"></span><span id="statusText">Loading camera model…</span>
   </div>
   <div class="auth-area">
     {% if user_logged_in %}
@@ -181,7 +181,8 @@
 
     <div class="veil" id="veil">
       <p>Handwaft reads your hand through your webcam and turns it into sound — nothing is recorded or sent anywhere.</p>
-      <button id="startBtn">Start playing</button>
+      <button id="startBtn" disabled>Loading…</button>
+      <span class="prep" id="prepText">Preparing hand tracking…</span>
     </div>
   </div>
 
@@ -217,8 +218,6 @@
     </div>
   </div>
 </main>
-
-<!-- Instructions side popup -->
 <div class="instructions-panel" id="instructionsPanel">
   <h3>Instructions <button class="close-x" id="closeHelp">✕</button></h3>
   <ul class="hint-list">
@@ -228,11 +227,10 @@
     <li><b>Height</b> — raise your hand to raise the volume; a closed fist mutes it.</li>
     <li><b>Search 🔍</b> — find songs. Spotify users search their own library; everyone else searches a free built-in catalog.</li>
     <li><b>Merge</b> — tick two search results, then merge & play them together.</li>
-    <li><b>Make tunes 🎹</b> — click the grid to place notes, then loop your own tune.</li>
+    <li><b>Make tunes 🎹</b> — click the grid to place notes, save it, or hit Done to control it live with your hand.</li>
   </ul>
 </div>
 
-<!-- Search music modal -->
 <div class="modal-overlay" id="searchOverlay">
   <div class="modal">
     <div class="modal-header">
@@ -255,7 +253,6 @@
   </div>
 </div>
 
-<!-- Playlists modal (Spotify only) -->
 <div class="modal-overlay" id="playlistsOverlay">
   <div class="modal">
     <div class="modal-header">
@@ -266,20 +263,23 @@
   </div>
 </div>
 
-<!-- Make your own tunes modal -->
 <div class="modal-overlay" id="tunesOverlay">
   <div class="modal">
     <div class="modal-header">
       <h3>Make your own tunes</h3>
       <button id="closeTunes">✕</button>
     </div>
-    <div class="modal-sub">Click cells to place notes — higher row is a higher pitch. Press play to loop it.</div>
+    <div class="modal-sub">Click cells to place notes — higher row is a higher pitch.</div>
     <div class="tune-grid" id="tuneGrid"></div>
     <div class="tune-controls">
       <button class="primary" id="tunePlay">▶ Play</button>
       <button id="tuneClear">Clear</button>
+      <button id="tuneSave">💾 Save</button>
+      <button id="tuneDone">✅ Done — play with hand</button>
       <label>Tempo <input type="range" id="tuneTempo" min="80" max="240" value="140" style="width:80px; accent-color:var(--violet);"></label>
     </div>
+    <div class="modal-sub" style="margin-top:14px;">Saved tunes</div>
+    <div id="savedTunesList"></div>
   </div>
 </div>
 
@@ -294,6 +294,7 @@
   const octx = overlay.getContext('2d');
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
+  const prepText = document.getElementById('prepText');
   const muteBadge = document.getElementById('muteBadge');
   const spreadMaxSlider = document.getElementById('spreadMaxSlider');
   const spreadMaxLabel = document.getElementById('spreadMaxLabel');
@@ -351,6 +352,7 @@
   let audioCtx, osc, osc2, gainNode, filterNode, osc2Gain;
 
   function setupSynth(){
+    if(audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     osc = audioCtx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 220;
     osc2 = audioCtx.createOscillator(); osc2.type = 'sawtooth'; osc2.frequency.value = 220 * 1.01;
@@ -361,6 +363,7 @@
     filterNode.connect(gainNode); gainNode.connect(audioCtx.destination);
     osc.start(); osc2.start();
   }
+
   function updateSynth({ curl, tilt, spread, height }){
     const now = audioCtx.currentTime;
     const freq = 220 * Math.pow(2, (tilt * 7) / 12);
@@ -409,7 +412,7 @@
     const vision = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
     );
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    return await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
         delegate: "GPU"
@@ -418,6 +421,24 @@
       numHands: 1
     });
   }
+
+  // KEY SPEED FIX: start loading the hand-tracking model the instant the
+  // page loads, in the background, instead of waiting until the user clicks
+  // "Start playing". By the time they click, the model is usually already
+  // ready, so only the webcam permission prompt is left to wait on.
+  const handLandmarkerPromise = initHandLandmarker()
+    .then(hl => {
+      handLandmarker = hl;
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start playing';
+      prepText.textContent = 'Ready';
+      statusText.textContent = 'Camera off';
+      return hl;
+    })
+    .catch(err => {
+      prepText.textContent = 'Failed to load hand tracking — refresh the page';
+      console.error(err);
+    });
 
   function resizeOverlay(){
     overlay.width = video.videoWidth;
@@ -432,6 +453,7 @@
         const landmarks = results.landmarks[0];
         drawLandmarks(landmarks);
         const params = getHandParams(landmarks);
+        currentGesture = params;
         const spreadNorm = updateSynth(params);
         updateUI(params, spreadNorm);
       } else {
@@ -449,22 +471,35 @@
       video.srcObject.getTracks().forEach(t => t.stop());
     }
     veil.style.display = 'flex';
+    veil.classList.remove('hidden');
     stopBtn.style.display = 'none';
     statusDot.classList.remove('live');
     statusText.textContent = 'Camera off';
+    handTuneMode = false;
   });
 
   startBtn.addEventListener('click', async () => {
     try{
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      startBtn.disabled = true;
+      startBtn.textContent = 'Starting…';
+      const [stream] = await Promise.all([
+        navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+          audio: false
+        }),
+        handLandmarkerPromise
+      ]);
       video.srcObject = stream;
+
+      await new Promise(resolve => {
+        video.onloadeddata = resolve;
+      });
       await video.play();
       resizeOverlay();
-
-      await initHandLandmarker();
       setupSynth();
 
-      veil.style.display = 'none';
+      veil.classList.add('hidden');
+      setTimeout(() => { veil.style.display = 'none'; }, 350);
       statusDot.classList.add('live');
       statusText.textContent = 'Camera live';
       stopBtn.style.display = 'inline-block';
@@ -472,6 +507,8 @@
       loop();
     }catch(err){
       statusText.textContent = 'Camera permission denied';
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start playing';
       console.error(err);
     }
   });
@@ -481,7 +518,7 @@
   document.getElementById('openHelp').addEventListener('click', () => instructionsPanel.classList.add('open'));
   document.getElementById('closeHelp').addEventListener('click', () => instructionsPanel.classList.remove('open'));
 
- /* ---------- Search music modal ---------- */
+  /* ---------- Search music modal ---------- */
   const SPOTIFY_CONNECTED = !!document.querySelector('.spotify-tag')?.textContent.includes('Spotify connected');
 
   const searchOverlay = document.getElementById('searchOverlay');
@@ -511,14 +548,10 @@
     try{
       let items = [];
       if(SPOTIFY_CONNECTED){
-        // Backend proxy that holds the user's Spotify access token server-side.
-        // Expected shape: [{ id, title, artist, artwork, previewUrl, externalUrl }]
         const res = await fetch('/api/spotify/search?q=' + encodeURIComponent(query));
         const data = await res.json();
         items = data.items || [];
       } else {
-        // No Spotify connected — fall back to Apple's free, keyless iTunes
-        // Search API so users can still find and preview songs.
         const res = await fetch('https://itunes.apple.com/search?media=music&limit=15&term=' + encodeURIComponent(query));
         const data = await res.json();
         items = (data.results || []).map(r => ({
@@ -579,24 +612,20 @@
       searchResults.appendChild(row);
     });
   }
+
   function updateMergeBar(){
     mergeLabel.textContent = `${selectedTracks.length} of 2 selected`;
     mergeBar.classList.toggle('show', selectedTracks.length > 0);
     mergeBtn.disabled = selectedTracks.length !== 2;
   }
-
+  let mergeCtx;
   mergeBtn.addEventListener('click', () => {
     const withPreview = selectedTracks.filter(t => t.previewUrl);
     if(withPreview.length < 2){ alert('Both selected tracks need a playable preview to merge.'); return; }
-    const mergeCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const mixGain = mergeCtx.createGain();
-    mixGain.gain.value = 0.8;
-    mixGain.connect(mergeCtx.destination);
+    if(!mergeCtx) mergeCtx = new (window.AudioContext || window.webkitAudioContext)();
     withPreview.slice(0, 2).forEach(t => {
       const el = new Audio(t.previewUrl);
-      el.crossOrigin = 'anonymous';
-      const src = mergeCtx.createMediaElementSource(el);
-      src.connect(mixGain);
+      el.volume = 0.8;
       el.play();
     });
   });
@@ -610,7 +639,6 @@
       const list = document.getElementById('playlistsList');
       list.innerHTML = '<div class="empty-note">Loading playlists…</div>';
       try{
-        // Backend proxy: GET /api/spotify/playlists -> [{ id, name, trackCount }]
         const res = await fetch('/api/spotify/playlists');
         const data = await res.json();
         const playlists = data.playlists || [];
@@ -629,11 +657,11 @@
       }
     });
   }
-  document.getElementById('closePlaylists').addEventListener('click', () => playlistsOverlay.classList.remove('open'));
+  document.getElementById('closePlaylists')?.addEventListener('click', () => playlistsOverlay.classList.remove('open'));
 
   async function openPlaylist(id, name){
     const list = document.getElementById('playlistsList');
-    list.innerHTML = `<div class="empty-note">Loading “${name}”…</div>`;
+    list.innerHTML = `<div class="empty-note">Loading "${name}"…</div>`;
     try{
       const res = await fetch(`/api/spotify/playlists/${id}/tracks`);
       const data = await res.json();
@@ -650,8 +678,10 @@
   const tuneGrid = document.getElementById('tuneGrid');
   const tuneTempo = document.getElementById('tuneTempo');
   const STEPS = 8, ROWS = 6;
-  const notePitches = [523.25, 466.16, 392.00, 349.23, 293.66, 261.63]; // high to low
+  const notePitches = [523.25, 466.16, 392.00, 349.23, 293.66, 261.63];
   let tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
+  let handTuneMode = false;
+  let currentGesture = { curl: 0, tilt: 0, spread: 0, height: 0.5 };
 
   function buildGrid(){
     tuneGrid.innerHTML = '';
@@ -660,7 +690,7 @@
       rowEl.className = 'tune-row';
       for(let c = 0; c < STEPS; c++){
         const cell = document.createElement('div');
-        cell.className = 'tune-cell';
+        cell.className = 'tune-cell' + (tuneState[r][c] ? ' on' : '');
         cell.dataset.row = r; cell.dataset.col = c;
         cell.addEventListener('click', () => {
           tuneState[r][c] = !tuneState[r][c];
@@ -674,10 +704,44 @@
   buildGrid();
 
   document.getElementById('openTunes').addEventListener('click', () => tunesOverlay.classList.add('open'));
-  document.getElementById('closeTunes').addEventListener('click', () => { tunesOverlay.classList.remove('open'); stopTune(); });
+  document.getElementById('closeTunes').addEventListener('click', () => { tunesOverlay.classList.remove('open'); });
   document.getElementById('tuneClear').addEventListener('click', () => {
     tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
     buildGrid();
+  });
+
+  document.getElementById('tuneSave').addEventListener('click', () => {
+    const name = prompt('Name this tune:');
+    if(!name) return;
+    const saved = JSON.parse(localStorage.getItem('handwaft_tunes') || '{}');
+    saved[name] = tuneState;
+    localStorage.setItem('handwaft_tunes', JSON.stringify(saved));
+    renderSavedTunes();
+  });
+
+  function renderSavedTunes(){
+    const saved = JSON.parse(localStorage.getItem('handwaft_tunes') || '{}');
+    const list = document.getElementById('savedTunesList');
+    list.innerHTML = '';
+    const names = Object.keys(saved);
+    if(!names.length){ list.innerHTML = '<div class="empty-note">No saved tunes yet.</div>'; return; }
+    names.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'playlist-row';
+      row.innerHTML = `<span>${name}</span><span class="cnt">load</span>`;
+      row.addEventListener('click', () => {
+        tuneState = saved[name];
+        buildGrid();
+      });
+      list.appendChild(row);
+    });
+  }
+  renderSavedTunes();
+
+  document.getElementById('tuneDone').addEventListener('click', () => {
+    handTuneMode = true;
+    tunesOverlay.classList.remove('open');
+    if(!tunePlaying) startTune();
   });
 
   let tuneCtx, tuneTimer, tuneStep = 0, tunePlaying = false;
@@ -697,19 +761,24 @@
       document.querySelectorAll('.tune-cell').forEach(c => c.classList.remove('playing-col'));
       for(let r = 0; r < ROWS; r++){
         if(tuneState[r][tuneStep]){
-          const osc = tuneCtx.createOscillator();
-          const g = tuneCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = notePitches[r];
-          g.gain.value = 0.2;
-          osc.connect(g); g.connect(tuneCtx.destination);
-          osc.start();
-          osc.stop(tuneCtx.currentTime + 0.25);
+          const muted = handTuneMode && currentGesture.curl > 0.85;
+          if(!muted){
+            const osc = tuneCtx.createOscillator();
+            const g = tuneCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = notePitches[r];
+            g.gain.value = handTuneMode ? currentGesture.height * 0.3 : 0.2;
+            osc.connect(g); g.connect(tuneCtx.destination);
+            osc.start();
+            osc.stop(tuneCtx.currentTime + 0.25);
+          }
         }
-        document.querySelector(`.tune-cell[data-row="${r}"][data-col="${tuneStep}"]`).classList.add('playing-col');
+        const cell = document.querySelector(`.tune-cell[data-row="${r}"][data-col="${tuneStep}"]`);
+        if(cell) cell.classList.add('playing-col');
       }
       tuneStep = (tuneStep + 1) % STEPS;
-      tuneTimer = setTimeout(tick, stepMs());
+      const speedFactor = handTuneMode ? (0.5 + (currentGesture.tilt + 1) / 2) : 1;
+      tuneTimer = setTimeout(tick, stepMs() / speedFactor);
     };
     tick();
   }
