@@ -160,7 +160,7 @@
   <div class="status">
     <button id="stopBtn">Stop</button>
     {% if spotify_connected %}
-      <span class="spotify-tag">● Spotify connected</span>
+      <span class="spotify-tag">● Spotify connected{% if user_name %} — {{ user_name }}{% endif %}</span>
     {% endif %}
     <span class="dot" id="statusDot"></span><span id="statusText">Loading camera model…</span>
   </div>
@@ -624,7 +624,7 @@
       });
 
       playBtn.addEventListener('click', () => {
-        if(!item.previewUrl) return;
+       if(!item.previewUrl){ if(item.externalUrl) window.open(item.externalUrl, '_blank'); return; }
         if(previewAudio && !previewAudio.paused){ previewAudio.pause(); playBtn.textContent = '▶'; return; }
         document.querySelectorAll('.play-btn').forEach(b => b.textContent = '▶');
         previewAudio = new Audio(item.previewUrl);
@@ -645,13 +645,23 @@
   let mergeCtx;
   mergeBtn.addEventListener('click', () => {
     const withPreview = selectedTracks.filter(t => t.previewUrl);
-    if(withPreview.length < 2){ alert('Both selected tracks need a playable preview to merge.'); return; }
-    if(!mergeCtx) mergeCtx = new (window.AudioContext || window.webkitAudioContext)();
-    withPreview.slice(0, 2).forEach(t => {
-      const el = new Audio(t.previewUrl);
-      el.volume = 0.8;
-      el.play();
-    });
+    if(withPreview.length === 2){
+      if(!mergeCtx) mergeCtx = new (window.AudioContext || window.webkitAudioContext)();
+      withPreview.forEach(t => {
+        const el = new Audio(t.previewUrl);
+        el.volume = 0.8;
+        el.play();
+      });
+    } else {
+      // No previews available for one or both — Spotify no longer provides
+      // 30-second clips for most tracks, so open both in Spotify instead.
+      selectedTracks.forEach(t => {
+        if(t.externalUrl) window.open(t.externalUrl, '_blank');
+      });
+      if(selectedTracks.some(t => !t.externalUrl)){
+        alert('One of the selected tracks has no playable audio or Spotify link.');
+      }
+    }
   });
 
   /* ---------- Playlists modal (Spotify only) ---------- */
