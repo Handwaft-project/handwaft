@@ -161,8 +161,6 @@
     <button id="stopBtn">Stop</button>
     {% if spotify_connected %}
       <span class="spotify-tag">● Spotify connected</span>
-    {% else %}
-      <a href="/login/spotify" class="spotify-tag" style="opacity:0.7;">Connect Spotify</a>
     {% endif %}
     <span class="dot" id="statusDot"></span><span id="statusText">Loading camera model…</span>
   </div>
@@ -174,8 +172,7 @@
         <a href="/logout" class="logout-btn">Log out</a>
       </div>
     {% else %}
-      <a href="/login" class="auth-btn">Log in</a>
-      <a href="/signup" class="auth-btn primary">Sign up</a>
+      <a href="/login" class="auth-btn primary">Log in with Spotify</a>
     {% endif %}
   </div>
 </header>

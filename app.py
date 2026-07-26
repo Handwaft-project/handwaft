@@ -1,8 +1,6 @@
 import os
 import json
-import uuid
 from flask import Flask, render_template, redirect, request, session, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 import base64
 import urllib.parse
@@ -34,57 +32,15 @@ def home():
     return render_template('login.html')
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login')
 def login():
-    if request.method == 'GET':
-        return render_template('login.html')
-
-    data = request.get_json()
-    email = (data.get('email') or '').strip().lower()
-    password = data.get('password') or ''
-
-    users = load_users()
-    user = users.get(email)
-
-    if not user or not check_password_hash(user['password_hash'], password):
-        return jsonify({'error': 'Incorrect email or password.'}), 401
-
-    session['user_id'] = user['id']
-    session['user_name'] = user['name']
-    session['user_email'] = email
-
-    return jsonify({'ok': True}), 200
+    return render_template('login.html')
 
 
-@app.route('/signup', methods=['GET', 'POST'])
+@app.route('/signup')
 def signup():
-    if request.method == 'GET':
-        return render_template('signup.html')
-
-    data = request.get_json()
-    name = (data.get('name') or '').strip()
-    email = (data.get('email') or '').strip().lower()
-    password = data.get('password') or ''
-
-    if not name or not email or len(password) < 8:
-        return jsonify({'error': 'Please fill all fields — password needs 8+ characters.'}), 400
-
-    users = load_users()
-    if email in users:
-        return jsonify({'error': 'An account with that email already exists.'}), 409
-
-    users[email] = {
-        'id': str(uuid.uuid4()),
-        'name': name,
-        'password_hash': generate_password_hash(password)
-    }
-    save_users(users)
-
-    session['user_id'] = users[email]['id']
-    session['user_name'] = name
-    session['user_email'] = email
-
-    return jsonify({'ok': True}), 200
+    # Only one entry point now — send them to the same Spotify login screen.
+    return redirect('/login')
 
 
 @app.route('/logout')
@@ -107,7 +63,7 @@ def index():
 # Step 1: send the user to Spotify to approve access
 @app.route('/login/spotify')
 def login_spotify():
-    scope = 'user-read-private playlist-read-private user-library-read'
+    scope = 'user-read-private user-read-email playlist-read-private user-library-read'
     params = {
         'client_id': SPOTIFY_CLIENT_ID,
         'response_type': 'code',
@@ -118,16 +74,14 @@ def login_spotify():
     return redirect(url)
 
 
-# Step 2: Spotify sends the user back here with a code we trade for a token
+# Step 2: Spotify sends the user back here — this both logs in and signs up
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
     error = request.args.get('error')
 
     if error or not code:
-        # Spotify rejected the login or the user cancelled — go back cleanly,
-        # don't set a broken session key.
-        return redirect('/index?spotify_error=1')
+        return redirect('/login?error=1')
 
     auth_header = base64.b64encode(
         f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode()
@@ -142,18 +96,37 @@ def callback():
         },
         headers={'Authorization': f'Basic {auth_header}'}
     )
-
     token_data = resp.json()
     access_token = token_data.get('access_token')
 
     if not access_token:
-        # THE FIX: only write the token into the session if it's real.
-        # Previously this always set session['spotify_token'], even to None,
-        # which made spotify_connected read True with no working token.
-        return redirect('/index?spotify_error=1')
+        return redirect('/login?error=1')
 
+    # Fetch the Spotify profile so we know who this is
+    profile_resp = requests.get(
+        'https://api.spotify.com/v1/me',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+    profile = profile_resp.json()
+    spotify_id = profile.get('id')
+
+    if not spotify_id:
+        return redirect('/login?error=1')
+
+    # Create the local account on first login, or reuse it on repeat visits —
+    # this is the "login or signup, one and the same" behavior.
+    users = load_users()
+    if spotify_id not in users:
+        users[spotify_id] = {
+            'name': profile.get('display_name') or 'Spotify User',
+        }
+        save_users(users)
+
+    session['user_id'] = spotify_id
+    session['user_name'] = users[spotify_id]['name']
     session['spotify_token'] = access_token
     session['spotify_refresh'] = token_data.get('refresh_token')
+
     return redirect('/index')
 
 
@@ -168,7 +141,6 @@ def spotify_playlists():
         headers={'Authorization': f'Bearer {token}'}
     )
     if resp.status_code == 401:
-        # Token expired/invalid — clear it so the UI stops claiming we're connected
         session.pop('spotify_token', None)
         return jsonify({'error': 'spotify session expired, please reconnect'}), 401
     return jsonify(resp.json())
