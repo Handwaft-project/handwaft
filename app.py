@@ -73,8 +73,8 @@ def choose_username():
         return jsonify({'error': 'Username must be at least 3 characters.'}), 400
 
     users = load_users()
-    for uid, u in users.items():
-        if u.get('username', '').lower() == username.lower() and uid != session['user_id']:
+     for uid, u in users.items():
+        if (u.get('username') or '').lower() == username.lower() and uid != session['user_id']:
             return jsonify({'error': 'That username is already taken.'}), 409
 
     users[session['user_id']]['username'] = username
@@ -159,7 +159,7 @@ def change_username():
 
     users = load_users()
     for uid, u in users.items():
-        if u.get('username', '').lower() == new_username.lower() and uid != session['user_id']:
+        if (u.get('username') or '').lower() == new_username.lower() and uid != session['user_id']:
             return jsonify({'error': 'That username is already taken.'}), 409
 
     users[session['user_id']]['username'] = new_username
