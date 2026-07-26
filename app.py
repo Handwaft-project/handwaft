@@ -73,7 +73,7 @@ def choose_username():
         return jsonify({'error': 'Username must be at least 3 characters.'}), 400
 
     users = load_users()
-     for uid, u in users.items():
+    for uid, u in users.items():
         if (u.get('username') or '').lower() == username.lower() and uid != session['user_id']:
             return jsonify({'error': 'That username is already taken.'}), 409
 
