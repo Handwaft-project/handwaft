@@ -143,8 +143,17 @@ def spotify_playlists():
     if resp.status_code == 401:
         session.pop('spotify_token', None)
         return jsonify({'error': 'spotify session expired, please reconnect'}), 401
-    return jsonify(resp.json())
 
+    data = resp.json()
+    playlists = [
+        {
+            'id': p['id'],
+            'name': p['name'],
+            'trackCount': p.get('tracks', {}).get('total', 0)
+        }
+        for p in data.get('items', [])
+    ]
+    return jsonify({'playlists': playlists})
 
 # Real song search
 @app.route('/api/spotify/search')
@@ -161,9 +170,47 @@ def spotify_search():
     if resp.status_code == 401:
         session.pop('spotify_token', None)
         return jsonify({'error': 'spotify session expired, please reconnect'}), 401
-    return jsonify(resp.json())
 
+    data = resp.json()
+    tracks = data.get('tracks', {}).get('items', [])
+    items = [
+        {
+            'id': t['id'],
+            'title': t['name'],
+            'artist': ', '.join(a['name'] for a in t.get('artists', [])),
+            'artwork': (t.get('album', {}).get('images') or [{}])[-1].get('url', ''),
+            'previewUrl': t.get('preview_url'),
+            'externalUrl': t.get('external_urls', {}).get('spotify')
+        }
+        for t in tracks
+    ]
+    return jsonify({'items': items})
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    @app.route('/api/spotify/playlists/<playlist_id>/tracks')
+def spotify_playlist_tracks(playlist_id):
+    token = session.get('spotify_token')
+    if not token:
+        return jsonify({'error': 'not connected'}), 401
+    resp = requests.get(
+        f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks',
+        headers={'Authorization': f'Bearer {token}'}
+    )
+    if resp.status_code == 401:
+        session.pop('spotify_token', None)
+        return jsonify({'error': 'spotify session expired, please reconnect'}), 401
+
+    data = resp.json()
+    items = []
+    for entry in data.get('items', []):
+        t = entry.get('track')
+        if not t:
+            continue
+        items.append({
+            'id': t['id'],
+            'title': t['name'],
+            'artist': ', '.join(a['name'] for a in t.get('artists', [])),
+            'artwork': (t.get('album', {}).get('images') or [{}])[-1].get('url', ''),
+            'previewUrl': t.get('preview_url'),
+            'externalUrl': t.get('external_urls', {}).get('spotify')
+        })
+    return jsonify({'items': items})
