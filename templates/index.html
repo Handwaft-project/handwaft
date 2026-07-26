@@ -251,9 +251,9 @@
     <div class="modal-sub">Free open catalog — no login needed, full tracks.</div>
     <input type="text" class="search-input" id="searchInput" placeholder="Search for a song or artist…">
     <div id="searchResults"></div>
-    <div class="merge-bar" id="mergeBar">
-      <span id="mergeLabel">0 of 2 selected</span>
-      <button class="merge-btn" id="mergeBtn" disabled>Merge &amp; play</button>
+    <div class="merge-bar show" id="nowPlayingBar" style="display:none;">
+      <span id="nowPlayingLabel">Not playing</span>
+      <button class="merge-btn" id="stopTrackBtn" style="background:var(--coral); color:#1a0a06;">■ Stop</button>
     </div>
     <div class="modal-sub" style="margin-top:14px;">Add selected to a playlist</div>
     <input type="text" class="search-input" id="newPlaylistName" placeholder="Playlist name">
@@ -386,9 +386,12 @@
     osc.start(); osc2.start();
   }
 
-  let handTuneMode = false;
+ let handTuneMode = false;
+  let trackHandMode = false;
   let handDetected = false;
   let currentGesture = { curl: 0, tilt: 0, spread: 0, height: 0.5 };
+  let activeTrackAudio = null;
+  let activeMergeAudios = [];
 
   function updateSynth({ curl, tilt, spread, height }){
     const now = audioCtx.currentTime;
@@ -478,13 +481,24 @@
         currentGesture = params;
         handDetected = true;
         let spreadNorm;
-        if(handTuneMode){
+        if(handTuneMode || trackHandMode){
           gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
           spreadNorm = Math.max(0, Math.min(1, params.spread / SPREAD_MAX));
         } else {
           spreadNorm = updateSynth(params);
         }
         updateUI(params, spreadNorm);
+
+        if(trackHandMode && activeTrackAudio){
+          if(handDetected){
+            if(activeTrackAudio.paused) activeTrackAudio.play().catch(()=>{});
+            const muted = params.curl > 0.85;
+            activeTrackAudio.volume = muted ? 0 : Math.max(0, Math.min(1, params.height));
+            activeTrackAudio.playbackRate = Math.max(0.5, Math.min(2, 1 + params.tilt));
+          } else {
+            activeTrackAudio.pause();
+          }
+        }
       } else {
         octx.clearRect(0,0,overlay.width, overlay.height);
         gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
@@ -613,7 +627,7 @@
       `;
       const checkbox = row.querySelector('input');
       const playBtn = row.querySelector('.play-btn');
-      let previewAudio = null;
+      const handBtn = row.querySelector('.hand-btn');
 
       checkbox.addEventListener('change', () => {
         if(checkbox.checked){
@@ -626,12 +640,22 @@
       });
 
       playBtn.addEventListener('click', () => {
-        if(previewAudio && !previewAudio.paused){ previewAudio.pause(); playBtn.textContent = '▶'; return; }
-        document.querySelectorAll('.play-btn').forEach(b => b.textContent = '▶');
-        previewAudio = new Audio(item.previewUrl);
-        previewAudio.play();
-        playBtn.textContent = '⏸';
-        previewAudio.onended = () => playBtn.textContent = '▶';
+        stopAllTrackAudio();
+        const audio = new Audio(item.previewUrl);
+        audio.volume = 0.8;
+        audio.play();
+        activeTrackAudio = audio;
+        showNowPlaying(item.title + ' — ' + item.artist);
+        audio.onended = () => hideNowPlaying();
+      });
+
+      handBtn.addEventListener('click', () => {
+        stopAllTrackAudio();
+        const audio = new Audio(item.previewUrl);
+        audio.volume = 0;
+        activeTrackAudio = audio;
+        trackHandMode = true;
+        showNowPlaying('🖐 ' + item.title + ' — ' + item.artist + ' — put your hand on camera to play it');
       });
 
       searchResults.appendChild(row);
@@ -643,13 +667,34 @@
     mergeBar.classList.toggle('show', selectedTracks.length > 0);
     mergeBtn.disabled = selectedTracks.length !== 2;
   }
+  const nowPlayingBar = document.getElementById('nowPlayingBar');
+  const nowPlayingLabel = document.getElementById('nowPlayingLabel');
 
-  mergeBtn.addEventListener('click', () => {
-    selectedTracks.forEach(t => {
+  function showNowPlaying(label){
+    nowPlayingLabel.textContent = label;
+    nowPlayingBar.style.display = 'flex';
+  }
+  function hideNowPlaying(){
+    nowPlayingBar.style.display = 'none';
+  }
+  function stopAllTrackAudio(){
+    if(activeTrackAudio){ activeTrackAudio.pause(); activeTrackAudio = null; }
+    activeMergeAudios.forEach(a => a.pause());
+    activeMergeAudios = [];
+    trackHandMode = false;
+    hideNowPlaying();
+  }
+  document.getElementById('stopTrackBtn').addEventListener('click', stopAllTrackAudio);
+
+ mergeBtn.addEventListener('click', () => {
+    stopAllTrackAudio();
+    activeMergeAudios = selectedTracks.map(t => {
       const el = new Audio(t.previewUrl);
       el.volume = 0.8;
       el.play();
+      return el;
     });
+    showNowPlaying('Merging: ' + selectedTracks.map(t => t.title).join(' + '));
   });
 
   /* ---------- My playlists (local, no login-tied Spotify needed) ---------- */
