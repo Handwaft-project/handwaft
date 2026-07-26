@@ -39,7 +39,6 @@ def login():
 
 @app.route('/signup')
 def signup():
-    # Only one entry point now — send them to the same Spotify login screen.
     return redirect('/login')
 
 
@@ -60,7 +59,6 @@ def index():
     )
 
 
-# Step 1: send the user to Spotify to approve access
 @app.route('/login/spotify')
 def login_spotify():
     scope = 'user-read-private user-read-email playlist-read-private user-library-read'
@@ -74,7 +72,6 @@ def login_spotify():
     return redirect(url)
 
 
-# Step 2: Spotify sends the user back here — this both logs in and signs up
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
@@ -102,7 +99,6 @@ def callback():
     if not access_token:
         return redirect('/login?error=1')
 
-    # Fetch the Spotify profile so we know who this is
     profile_resp = requests.get(
         'https://api.spotify.com/v1/me',
         headers={'Authorization': f'Bearer {access_token}'}
@@ -113,8 +109,6 @@ def callback():
     if not spotify_id:
         return redirect('/login?error=1')
 
-    # Create the local account on first login, or reuse it on repeat visits —
-    # this is the "login or signup, one and the same" behavior.
     users = load_users()
     if spotify_id not in users:
         users[spotify_id] = {
@@ -130,7 +124,6 @@ def callback():
     return redirect('/index')
 
 
-# Real user playlists, using their real token
 @app.route('/api/spotify/playlists')
 def spotify_playlists():
     token = session.get('spotify_token')
@@ -155,7 +148,7 @@ def spotify_playlists():
     ]
     return jsonify({'playlists': playlists})
 
-# Real song search
+
 @app.route('/api/spotify/search')
 def spotify_search():
     token = session.get('spotify_token')
@@ -186,7 +179,8 @@ def spotify_search():
     ]
     return jsonify({'items': items})
 
-    @app.route('/api/spotify/playlists/<playlist_id>/tracks')
+
+@app.route('/api/spotify/playlists/<playlist_id>/tracks')
 def spotify_playlist_tracks(playlist_id):
     token = session.get('spotify_token')
     if not token:
@@ -214,3 +208,8 @@ def spotify_playlist_tracks(playlist_id):
             'externalUrl': t.get('external_urls', {}).get('spotify')
         })
     return jsonify({'items': items})
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
