@@ -1,16 +1,15 @@
 import os
 import json
-from flask import Flask, render_template, redirect, request, session, jsonify
-import requests
-import base64
 import urllib.parse
+import requests
+from flask import Flask, render_template, redirect, request, session, jsonify
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fallback-dev-key-change-this')
 
-SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
-SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'http://127.0.0.1:8080/callback')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'https://handwaft.up.railway.app/callback/google')
 
 USERS_FILE = 'users.json'
 
@@ -37,11 +36,6 @@ def login():
     return render_template('login.html')
 
 
-@app.route('/signup')
-def signup():
-    return redirect('/login')
-
-
 @app.route('/logout')
 def logout():
     session.clear()
@@ -50,164 +44,138 @@ def logout():
 
 @app.route('/index')
 def index():
+    if 'user_id' not in session:
+        return redirect('/login')
+    users = load_users()
+    user = users.get(session['user_id'], {})
+    if not user.get('username'):
+        return redirect('/choose-username')
     return render_template(
         'index.html',
-        spotify_connected=bool(session.get('spotify_token')),
-        user_logged_in='user_id' in session,
-        user_name=session.get('user_name'),
-        user_initial=(session.get('user_name') or '?')[0].upper()
+        user_logged_in=True,
+        user_name=user.get('username'),
+        user_initial=(user.get('username') or '?')[0].upper()
     )
 
 
-@app.route('/login/spotify')
-def login_spotify():
-    scope = 'user-read-private user-read-email playlist-read-private user-library-read'
+@app.route('/choose-username', methods=['GET', 'POST'])
+def choose_username():
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    if request.method == 'GET':
+        return render_template('choose_username.html')
+
+    data = request.get_json()
+    username = (data.get('username') or '').strip()
+
+    if len(username) < 3:
+        return jsonify({'error': 'Username must be at least 3 characters.'}), 400
+
+    users = load_users()
+    for uid, u in users.items():
+        if u.get('username', '').lower() == username.lower() and uid != session['user_id']:
+            return jsonify({'error': 'That username is already taken.'}), 409
+
+    users[session['user_id']]['username'] = username
+    save_users(users)
+    return jsonify({'ok': True}), 200
+
+
+@app.route('/login/google')
+def login_google():
     params = {
-        'client_id': SPOTIFY_CLIENT_ID,
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
         'response_type': 'code',
-        'redirect_uri': SPOTIFY_REDIRECT_URI,
-        'scope': scope,
+        'scope': 'openid email profile',
+        'access_type': 'online',
+        'prompt': 'select_account'
     }
-    url = 'https://accounts.spotify.com/authorize?' + urllib.parse.urlencode(params)
+    url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urllib.parse.urlencode(params)
     return redirect(url)
 
 
-@app.route('/callback')
-def callback():
+@app.route('/callback/google')
+def callback_google():
     code = request.args.get('code')
     error = request.args.get('error')
 
     if error or not code:
         return redirect('/login?error=1')
 
-    auth_header = base64.b64encode(
-        f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}".encode()
-    ).decode()
-
-    resp = requests.post(
-        'https://accounts.spotify.com/api/token',
-        data={
-            'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': SPOTIFY_REDIRECT_URI,
-        },
-        headers={'Authorization': f'Basic {auth_header}'}
-    )
-    token_data = resp.json()
+    token_resp = requests.post('https://oauth2.googleapis.com/token', data={
+        'code': code,
+        'client_id': GOOGLE_CLIENT_ID,
+        'client_secret': GOOGLE_CLIENT_SECRET,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'grant_type': 'authorization_code'
+    })
+    token_data = token_resp.json()
     access_token = token_data.get('access_token')
 
     if not access_token:
         return redirect('/login?error=1')
 
     profile_resp = requests.get(
-        'https://api.spotify.com/v1/me',
+        'https://www.googleapis.com/oauth2/v2/userinfo',
         headers={'Authorization': f'Bearer {access_token}'}
     )
     profile = profile_resp.json()
-    spotify_id = profile.get('id')
+    google_id = profile.get('id')
+    email = profile.get('email')
 
-    if not spotify_id:
+    if not google_id:
         return redirect('/login?error=1')
 
     users = load_users()
-    if spotify_id not in users:
-        users[spotify_id] = {
-            'name': profile.get('display_name') or 'Spotify User',
-        }
+    if google_id not in users:
+        users[google_id] = {'email': email, 'username': None}
         save_users(users)
 
-    session['user_id'] = spotify_id
-    session['user_name'] = users[spotify_id]['name']
-    session['spotify_token'] = access_token
-    session['spotify_refresh'] = token_data.get('refresh_token')
-
+    session['user_id'] = google_id
     return redirect('/index')
 
 
-@app.route('/api/spotify/playlists')
-def spotify_playlists():
-    token = session.get('spotify_token')
-    if not token:
-        return jsonify({'error': 'not connected'}), 401
-    resp = requests.get(
-        'https://api.spotify.com/v1/me/playlists',
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    if resp.status_code == 401:
-        session.pop('spotify_token', None)
-        return jsonify({'error': 'spotify session expired, please reconnect'}), 401
-
-    data = resp.json()
-    playlists = [
-        {
-            'id': p['id'],
-            'name': p['name'],
-            'trackCount': p.get('tracks', {}).get('total', 0)
-        }
-        for p in data.get('items', [])
-    ]
-    return jsonify({'playlists': playlists})
+@app.route('/api/user')
+def get_user():
+    if 'user_id' not in session:
+        return jsonify({'error': 'not logged in'}), 401
+    users = load_users()
+    user = users.get(session['user_id'], {})
+    return jsonify({'username': user.get('username'), 'email': user.get('email')})
 
 
-@app.route('/api/spotify/search')
-def spotify_search():
-    token = session.get('spotify_token')
-    if not token:
-        return jsonify({'error': 'not connected'}), 401
-    q = request.args.get('q', '')
-    resp = requests.get(
-        'https://api.spotify.com/v1/search',
-        params={'q': q, 'type': 'track', 'limit': 10},
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    if resp.status_code == 401:
-        session.pop('spotify_token', None)
-        return jsonify({'error': 'spotify session expired, please reconnect'}), 401
+@app.route('/api/user/username', methods=['POST'])
+def change_username():
+    if 'user_id' not in session:
+        return jsonify({'error': 'not logged in'}), 401
 
-    data = resp.json()
-    tracks = data.get('tracks', {}).get('items', [])
-    items = [
-        {
-            'id': t['id'],
-            'title': t['name'],
-            'artist': ', '.join(a['name'] for a in t.get('artists', [])),
-            'artwork': (t.get('album', {}).get('images') or [{}])[-1].get('url', ''),
-            'previewUrl': t.get('preview_url'),
-            'externalUrl': t.get('external_urls', {}).get('spotify')
-        }
-        for t in tracks
-    ]
-    return jsonify({'items': items})
+    data = request.get_json()
+    new_username = (data.get('username') or '').strip()
+
+    if len(new_username) < 3:
+        return jsonify({'error': 'Username must be at least 3 characters.'}), 400
+
+    users = load_users()
+    for uid, u in users.items():
+        if u.get('username', '').lower() == new_username.lower() and uid != session['user_id']:
+            return jsonify({'error': 'That username is already taken.'}), 409
+
+    users[session['user_id']]['username'] = new_username
+    save_users(users)
+    return jsonify({'ok': True})
 
 
-@app.route('/api/spotify/playlists/<playlist_id>/tracks')
-def spotify_playlist_tracks(playlist_id):
-    token = session.get('spotify_token')
-    if not token:
-        return jsonify({'error': 'not connected'}), 401
-    resp = requests.get(
-        f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks',
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    if resp.status_code == 401:
-        session.pop('spotify_token', None)
-        return jsonify({'error': 'spotify session expired, please reconnect'}), 401
-
-    data = resp.json()
-    items = []
-    for entry in data.get('items', []):
-        t = entry.get('track')
-        if not t:
-            continue
-        items.append({
-            'id': t['id'],
-            'title': t['name'],
-            'artist': ', '.join(a['name'] for a in t.get('artists', [])),
-            'artwork': (t.get('album', {}).get('images') or [{}])[-1].get('url', ''),
-            'previewUrl': t.get('preview_url'),
-            'externalUrl': t.get('external_urls', {}).get('spotify')
-        })
-    return jsonify({'items': items})
+@app.route('/api/user/delete', methods=['POST'])
+def delete_account():
+    if 'user_id' not in session:
+        return jsonify({'error': 'not logged in'}), 401
+    users = load_users()
+    users.pop(session['user_id'], None)
+    save_users(users)
+    session.clear()
+    return jsonify({'ok': True})
 
 
 if __name__ == '__main__':

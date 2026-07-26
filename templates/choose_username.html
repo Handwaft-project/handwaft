@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choose a username — Handwaft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#090b12; --surface: rgba(255,255,255,0.045); --border: rgba(255,255,255,0.09);
+    --violet:#7b61ff; --teal:#2bd9c9; --coral:#ff6b4a; --text:#f2f1f8; --muted:#8c90a8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ background:var(--bg); color:var(--text); font-family:'Inter', sans-serif; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  .card{ width:380px; max-width:100%; background:var(--surface); border:1px solid var(--border);
+    backdrop-filter:blur(18px); border-radius:20px; padding:36px; text-align:center; }
+  h1{ font-family:'Space Grotesk', sans-serif; font-size:22px; font-weight:600; margin-bottom:8px; }
+  p{ color:var(--muted); font-size:13.5px; margin-bottom:22px; line-height:1.5; }
+  input{ width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+    background:rgba(255,255,255,0.03); color:var(--text); font-family:'Inter', sans-serif; font-size:14px;
+    margin-bottom:12px; outline:none; transition:border-color .2s ease; }
+  input:focus{ border-color:var(--teal); background:rgba(43,217,201,0.06); }
+  button{ width:100%; padding:12px; border:none; border-radius:10px;
+    background:linear-gradient(135deg, var(--teal), var(--violet)); color:#06110f; font-family:'Inter', sans-serif;
+    font-weight:700; font-size:14px; cursor:pointer; transition:transform .15s ease; }
+  button:hover{ transform:translateY(-1px); }
+  button:disabled{ opacity:0.6; cursor:wait; transform:none; }
+  .err{ color:var(--coral); font-size:12.5px; margin-top:12px; display:none; background:rgba(255,107,74,0.08);
+    border:1px solid rgba(255,107,74,0.25); border-radius:8px; padding:9px 12px; }
+  .err.show{ display:block; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Pick a username</h1>
+  <p>This is how you'll appear in Handwaft — you can change it anytime in Settings.</p>
+  <input type="text" id="username" placeholder="e.g. handwaver23" minlength="3" autofocus>
+  <button id="saveBtn">Continue</button>
+  <div class="err" id="err"></div>
+</div>
+
+<script>
+  const saveBtn = document.getElementById('saveBtn');
+  const usernameInput = document.getElementById('username');
+  const err = document.getElementById('err');
+
+  async function submitUsername(){
+    const username = usernameInput.value.trim();
+    err.classList.remove('show');
+
+    if(username.length < 3){
+      err.textContent = 'Username must be at least 3 characters.';
+      err.classList.add('show');
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try{
+      const res = await fetch('/choose-username', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({ username })
+      });
+
+      if(res.ok){
+        window.location.href = '/index';
+      } else {
+        const data = await res.json().catch(() => ({}));
+        err.textContent = data.error || 'Something went wrong.';
+        err.classList.add('show');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Continue';
+      }
+    } catch(e){
+      err.textContent = 'Network error — please try again.';
+      err.classList.add('show');
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Continue';
+    }
+  }
+
+  saveBtn.addEventListener('click', submitUsername);
+  usernameInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') submitUsername();
+  });
+</script>
+</body>
+</html>

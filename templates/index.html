@@ -23,8 +23,6 @@
   .dot.live{ background:var(--teal); box-shadow:0 0 8px var(--teal); }
   #stopBtn{ display:none; padding:6px 14px; border-radius:8px; border:1px solid var(--border);
     background:rgba(255,107,74,0.12); color:var(--coral); font-size:12px; cursor:pointer; }
-  .spotify-tag{ display:flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border-radius:999px;
-    border:1px solid var(--border); background:rgba(29,185,84,0.08); color:#1DB954; text-decoration:none; }
 
   .auth-area{ display:flex; align-items:center; gap:10px; }
   .auth-btn{ padding:7px 16px; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none;
@@ -34,8 +32,10 @@
   .user-chip .avatar{ width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg, var(--teal), var(--violet));
     display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#0a0a12; font-family:'Space Grotesk', sans-serif; }
   .user-chip .uname{ font-size:12.5px; }
-  .user-chip .logout-btn{ font-size:11.5px; color:var(--muted); text-decoration:none; padding:4px 8px; border-radius:6px; }
-  .user-chip .logout-btn:hover{ color:var(--coral); background:rgba(255,107,74,0.1); }
+  .user-chip button.iconlink{ font-size:12.5px; color:var(--muted); text-decoration:none; padding:4px 8px; border-radius:6px; cursor:pointer; background:none; border:none; }
+  .user-chip button.iconlink:hover{ color:var(--teal); background:rgba(43,217,201,0.1); }
+  .user-chip a.logout-btn{ font-size:11.5px; color:var(--muted); text-decoration:none; padding:4px 8px; border-radius:6px; }
+  .user-chip a.logout-btn:hover{ color:var(--coral); background:rgba(255,107,74,0.1); }
 
   main{ display:grid; grid-template-columns: 1.4fr 1fr; gap:24px; padding:28px 32px; max-width:1200px; margin:0 auto; }
   @media (max-width: 860px){ main{ grid-template-columns:1fr; } }
@@ -44,8 +44,7 @@
   .stage video{ width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
   .stage canvas{ position:absolute; inset:0; width:100%; height:100%; transform:scaleX(-1); pointer-events:none; }
   .stage .veil{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px;
-    background:rgba(9,11,18,0.92); text-align:center; padding:20px; z-index:2;
-    opacity:1; transition:opacity .35s ease; }
+    background:rgba(9,11,18,0.92); text-align:center; padding:20px; z-index:2; opacity:1; transition:opacity .35s ease; }
   .stage .veil.hidden{ opacity:0; pointer-events:none; }
   .stage .veil button{ padding:12px 24px; border:none; border-radius:10px; background:linear-gradient(135deg, var(--violet), var(--teal));
     color:#0a0a12; font-weight:700; font-family:'Inter', sans-serif; font-size:14px; cursor:pointer; }
@@ -56,8 +55,6 @@
   .dock{ position:absolute; top:14px; right:14px; display:flex; flex-direction:column; gap:8px; z-index:3; }
   .dock-btn{ width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:rgba(9,11,18,0.75);
     backdrop-filter:blur(6px); color:var(--text); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; }
-  .dock-btn:hover{ border-color:var(--violet); color:var(--violet); }
-  .dock-btn.help{ color:var(--teal); }
   .dock-btn:hover{ border-color:var(--violet); color:var(--violet); }
   .dock-btn.help{ color:var(--teal); }
 
@@ -133,6 +130,7 @@
   .playlist-row{ padding:10px 8px; border-radius:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
   .playlist-row:hover{ background:rgba(255,255,255,0.03); }
   .playlist-row .cnt{ color:var(--muted); font-size:11.5px; }
+  .empty-note{ font-size:12.5px; color:var(--muted); padding:12px 0; }
   .saved-tune-row{ padding-right:6px; }
   .saved-tune-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .saved-tune-actions{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
@@ -140,7 +138,6 @@
   .saved-tune-actions .load-tune:hover{ color:var(--teal); }
   .delete-tune-btn{ background:none; border:none; font-size:13px; cursor:pointer; opacity:0.6; padding:2px 4px; border-radius:6px; }
   .delete-tune-btn:hover{ opacity:1; background:rgba(255,107,74,0.12); }
-  .empty-note{ font-size:12.5px; color:var(--muted); padding:12px 0; }
 
   .tune-grid{ display:grid; grid-template-rows:repeat(6, 1fr); gap:4px; margin-bottom:14px; }
   .tune-row{ display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; }
@@ -154,14 +151,10 @@
 </style>
 </head>
 <body>
-
-<header>
+  <header>
   <div class="brand"><div class="mark">H</div><span>Handwaft</span></div>
   <div class="status">
     <button id="stopBtn">Stop</button>
-    {% if spotify_connected %}
-      <span class="spotify-tag">● Spotify connected{% if user_name %} — {{ user_name }}{% endif %}</span>
-    {% endif %}
     <span class="dot" id="statusDot"></span><span id="statusText">Loading camera model…</span>
   </div>
   <div class="auth-area">
@@ -169,10 +162,11 @@
       <div class="user-chip">
         <div class="avatar">{{ user_initial }}</div>
         <span class="uname">{{ user_name }}</span>
+        <button class="iconlink" id="openSettings">⚙</button>
         <a href="/logout" class="logout-btn">Log out</a>
       </div>
     {% else %}
-      <a href="/login" class="auth-btn primary">Log in with Spotify</a>
+      <a href="/login" class="auth-btn primary">Log in</a>
     {% endif %}
   </div>
 </header>
@@ -184,12 +178,11 @@
 
     <div class="dock">
       <button class="dock-btn" id="openSearch" title="Search music">🔍</button>
+      <button class="dock-btn" id="openMyPlaylists" title="My playlists">🎧</button>
       <button class="dock-btn" id="openTunes" title="Make your own tunes">🎹</button>
-      {% if spotify_connected %}
-      <button class="dock-btn" id="openPlaylists" title="Your playlists">📁</button>
-      {% endif %}
       <button class="dock-btn help" id="openHelp" title="Instructions">?</button>
     </div>
+
     <div class="tune-mode-badge" id="tuneModeBadge">
       🎵 Playing your tune — curl = tone, tilt = speed &amp; pitch, height = volume, spread = width
       <button id="exitTuneMode">Exit</button>
@@ -234,14 +227,16 @@
     </div>
   </div>
 </main>
+
 <div class="instructions-panel" id="instructionsPanel">
   <h3>Instructions <button class="close-x" id="closeHelp">✕</button></h3>
   <ul class="hint-list">
-    <li><b>Curl</b> — close your fingers to darken the tone (low-pass filter closes).</li>
+    <li><b>Curl</b> — close your fingers to darken the tone.</li>
     <li><b>Tilt</b> — rotate your wrist to bend the pitch up or down.</li>
-    <li><b>Spread</b> — fan your fingers to widen the sound (adds a detuned second voice).</li>
+    <li><b>Spread</b> — fan your fingers to widen the sound.</li>
     <li><b>Height</b> — raise your hand to raise the volume; a closed fist mutes it.</li>
-    <li><b>Search 🔍</b> — find songs. Spotify users search their own library; everyone else searches a free built-in catalog.</li>
+    <li><b>Search 🔍</b> — search a free open music catalog, no account needed.</li>
+    <li><b>My playlists 🎧</b> — save searched tracks into your own named playlists.</li>
     <li><b>Merge</b> — tick two search results, then merge & play them together.</li>
     <li><b>Make tunes 🎹</b> — click the grid to place notes, save it, or hit Done to control it live with your hand.</li>
   </ul>
@@ -253,29 +248,26 @@
       <h3>Search music</h3>
       <button id="closeSearch">✕</button>
     </div>
-    <div class="modal-sub" id="searchSub">
-      {% if spotify_connected %}
-        Searching your connected Spotify account.
-      {% else %}
-        No Spotify connected — searching a free built-in catalog, no external app needed.
-      {% endif %}
-    </div>
+    <div class="modal-sub">Free open catalog — no login needed, full tracks.</div>
     <input type="text" class="search-input" id="searchInput" placeholder="Search for a song or artist…">
     <div id="searchResults"></div>
     <div class="merge-bar" id="mergeBar">
       <span id="mergeLabel">0 of 2 selected</span>
       <button class="merge-btn" id="mergeBtn" disabled>Merge &amp; play</button>
     </div>
+    <div class="modal-sub" style="margin-top:14px;">Add selected to a playlist</div>
+    <input type="text" class="search-input" id="newPlaylistName" placeholder="Playlist name">
+    <button class="merge-btn" id="addToPlaylistBtn">+ Add selected tracks</button>
   </div>
 </div>
 
 <div class="modal-overlay" id="playlistsOverlay">
   <div class="modal">
     <div class="modal-header">
-      <h3>Your playlists</h3>
+      <h3>My playlists</h3>
       <button id="closePlaylists">✕</button>
     </div>
-    <div id="playlistsList"><div class="empty-note">Loading playlists…</div></div>
+    <div id="playlistsList"></div>
   </div>
 </div>
 
@@ -294,8 +286,22 @@
       <button id="tuneDone">✅ Done — play with hand</button>
       <label>Tempo <input type="range" id="tuneTempo" min="80" max="240" value="140" style="width:80px; accent-color:var(--violet);"></label>
     </div>
-    <div class="modal-sub" style="margin-top:14px;">Saved tunes</div>
+    <div class="modal-sub" style="margin-top:22px;">Saved tunes</div>
     <div id="savedTunesList"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Settings</h3>
+      <button id="closeSettings">✕</button>
+    </div>
+    <div class="modal-sub">Change username</div>
+    <input type="text" class="search-input" id="settingsUsername" placeholder="New username">
+    <button class="merge-btn" id="saveUsernameBtn">Save username</button>
+    <div class="modal-sub" style="margin-top:22px; color:var(--coral);">Danger zone</div>
+    <button class="merge-btn" id="deleteAccountBtn" style="background:var(--coral); color:#1a0a06;">Delete my account</button>
   </div>
 </div>
 
@@ -380,6 +386,10 @@
     osc.start(); osc2.start();
   }
 
+  let handTuneMode = false;
+  let handDetected = false;
+  let currentGesture = { curl: 0, tilt: 0, spread: 0, height: 0.5 };
+
   function updateSynth({ curl, tilt, spread, height }){
     const now = audioCtx.currentTime;
     const freq = 220 * Math.pow(2, (tilt * 7) / 12);
@@ -438,10 +448,6 @@
     });
   }
 
-  // KEY SPEED FIX: start loading the hand-tracking model the instant the
-  // page loads, in the background, instead of waiting until the user clicks
-  // "Start playing". By the time they click, the model is usually already
-  // ready, so only the webcam permission prompt is left to wait on.
   const handLandmarkerPromise = initHandLandmarker()
     .then(hl => {
       handLandmarker = hl;
@@ -473,7 +479,7 @@
         handDetected = true;
         let spreadNorm;
         if(handTuneMode){
-          gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05); // drone silent, your tune takes over
+          gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
           spreadNorm = Math.max(0, Math.min(1, params.spread / SPREAD_MAX));
         } else {
           spreadNorm = updateSynth(params);
@@ -515,9 +521,7 @@
       ]);
       video.srcObject = stream;
 
-      await new Promise(resolve => {
-        video.onloadeddata = resolve;
-      });
+      await new Promise(resolve => { video.onloadeddata = resolve; });
       await video.play();
       resizeOverlay();
       setupSynth();
@@ -542,9 +546,7 @@
   document.getElementById('openHelp').addEventListener('click', () => instructionsPanel.classList.add('open'));
   document.getElementById('closeHelp').addEventListener('click', () => instructionsPanel.classList.remove('open'));
 
-  /* ---------- Search music modal ---------- */
-  const SPOTIFY_CONNECTED = !!document.querySelector('.spotify-tag')?.textContent.includes('Spotify connected');
-
+  /* ---------- Search music (Audius — free, no login, full tracks) ---------- */
   const searchOverlay = document.getElementById('searchOverlay');
   const searchInput = document.getElementById('searchInput');
   const searchResults = document.getElementById('searchResults');
@@ -567,26 +569,26 @@
     searchDebounce = setTimeout(() => runSearch(q), 350);
   });
 
+  async function getAudiusHost(){
+    const res = await fetch('https://api.audius.co');
+    const data = await res.json();
+    return data.data[0];
+  }
+
   async function runSearch(query){
     searchResults.innerHTML = '<div class="empty-note">Searching…</div>';
     try{
-      let items = [];
-      if(SPOTIFY_CONNECTED){
-        const res = await fetch('/api/spotify/search?q=' + encodeURIComponent(query));
-        const data = await res.json();
-        items = data.items || [];
-      } else {
-        const res = await fetch('https://itunes.apple.com/search?media=music&limit=15&term=' + encodeURIComponent(query));
-        const data = await res.json();
-        items = (data.results || []).map(r => ({
-          id: String(r.trackId),
-          title: r.trackName,
-          artist: r.artistName,
-          artwork: r.artworkUrl60,
-          previewUrl: r.previewUrl,
-          externalUrl: r.trackViewUrl
-        }));
-      }
+      const host = await getAudiusHost();
+      const res = await fetch(`${host}/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=Handwaft`);
+      const data = await res.json();
+      const items = (data.data || []).map(t => ({
+        id: t.id,
+        title: t.title,
+        artist: t.user?.name || 'Unknown',
+        artwork: t.artwork?.['150x150'] || '',
+        previewUrl: `${host}/v1/tracks/${t.id}/stream?app_name=Handwaft`,
+        externalUrl: t.permalink ? `https://audius.co${t.permalink}` : null
+      }));
       renderResults(items);
     }catch(err){
       searchResults.innerHTML = '<div class="empty-note">Search failed — try again.</div>';
@@ -624,7 +626,6 @@
       });
 
       playBtn.addEventListener('click', () => {
-       if(!item.previewUrl){ if(item.externalUrl) window.open(item.externalUrl, '_blank'); return; }
         if(previewAudio && !previewAudio.paused){ previewAudio.pause(); playBtn.textContent = '▶'; return; }
         document.querySelectorAll('.play-btn').forEach(b => b.textContent = '▶');
         previewAudio = new Audio(item.previewUrl);
@@ -642,71 +643,50 @@
     mergeBar.classList.toggle('show', selectedTracks.length > 0);
     mergeBtn.disabled = selectedTracks.length !== 2;
   }
-  let mergeCtx;
+
   mergeBtn.addEventListener('click', () => {
-    const withPreview = selectedTracks.filter(t => t.previewUrl);
-    if(withPreview.length === 2){
-      if(!mergeCtx) mergeCtx = new (window.AudioContext || window.webkitAudioContext)();
-      withPreview.forEach(t => {
-        const el = new Audio(t.previewUrl);
-        el.volume = 0.8;
-        el.play();
-      });
-    } else {
-      // No previews available for one or both — Spotify no longer provides
-      // 30-second clips for most tracks, so open both in Spotify instead.
-      selectedTracks.forEach(t => {
-        if(t.externalUrl) window.open(t.externalUrl, '_blank');
-      });
-      if(selectedTracks.some(t => !t.externalUrl)){
-        alert('One of the selected tracks has no playable audio or Spotify link.');
-      }
-    }
+    selectedTracks.forEach(t => {
+      const el = new Audio(t.previewUrl);
+      el.volume = 0.8;
+      el.play();
+    });
   });
 
-  /* ---------- Playlists modal (Spotify only) ---------- */
+  /* ---------- My playlists (local, no login-tied Spotify needed) ---------- */
+  document.getElementById('addToPlaylistBtn').addEventListener('click', () => {
+    const name = document.getElementById('newPlaylistName').value.trim();
+    if(!name || selectedTracks.length === 0){ alert('Pick a name and select at least one track first.'); return; }
+    const playlists = JSON.parse(localStorage.getItem('handwaft_playlists') || '{}');
+    playlists[name] = (playlists[name] || []).concat(selectedTracks);
+    localStorage.setItem('handwaft_playlists', JSON.stringify(playlists));
+    alert(`Added to "${name}"`);
+  });
+
   const playlistsOverlay = document.getElementById('playlistsOverlay');
-  const playlistsBtn = document.getElementById('openPlaylists');
-  if(playlistsBtn){
-    playlistsBtn.addEventListener('click', async () => {
-      playlistsOverlay.classList.add('open');
-      const list = document.getElementById('playlistsList');
-      list.innerHTML = '<div class="empty-note">Loading playlists…</div>';
-      try{
-        const res = await fetch('/api/spotify/playlists');
-        const data = await res.json();
-        const playlists = data.playlists || [];
-        if(!playlists.length){ list.innerHTML = '<div class="empty-note">No playlists found on this account.</div>'; return; }
-        list.innerHTML = '';
-        playlists.forEach(p => {
-          const row = document.createElement('div');
-          row.className = 'playlist-row';
-          row.innerHTML = `<span>${p.name}</span><span class="cnt">${p.trackCount} tracks</span>`;
-          row.addEventListener('click', () => openPlaylist(p.id, p.name));
-          list.appendChild(row);
-        });
-      }catch(err){
-        list.innerHTML = '<div class="empty-note">Could not load playlists.</div>';
-        console.error(err);
-      }
+  document.getElementById('openMyPlaylists').addEventListener('click', () => {
+    renderPlaylists();
+    playlistsOverlay.classList.add('open');
+  });
+  document.getElementById('closePlaylists').addEventListener('click', () => playlistsOverlay.classList.remove('open'));
+
+  function renderPlaylists(){
+    const playlists = JSON.parse(localStorage.getItem('handwaft_playlists') || '{}');
+    const list = document.getElementById('playlistsList');
+    const names = Object.keys(playlists);
+    if(!names.length){ list.innerHTML = '<div class="empty-note">No playlists yet — search and add tracks first.</div>'; return; }
+    list.innerHTML = '';
+    names.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'playlist-row';
+      row.innerHTML = `<span>${name}</span><span class="cnt">${playlists[name].length} tracks</span>`;
+      row.addEventListener('click', () => {
+        renderResults(playlists[name]);
+        playlistsOverlay.classList.remove('open');
+        searchOverlay.classList.add('open');
+      });
+      list.appendChild(row);
     });
   }
-  document.getElementById('closePlaylists')?.addEventListener('click', () => playlistsOverlay.classList.remove('open'));
-
-  async function openPlaylist(id, name){
-    const list = document.getElementById('playlistsList');
-    list.innerHTML = `<div class="empty-note">Loading "${name}"…</div>`;
-    try{
-      const res = await fetch(`/api/spotify/playlists/${id}/tracks`);
-      const data = await res.json();
-      renderResults(data.items || []);
-      playlistsOverlay.classList.remove('open');
-      searchOverlay.classList.add('open');
-    }catch(err){
-      list.innerHTML = '<div class="empty-note">Could not open playlist.</div>';
-    }
-  }
-
   /* ---------- Make your own tunes ---------- */
   const tunesOverlay = document.getElementById('tunesOverlay');
   const tuneGrid = document.getElementById('tuneGrid');
@@ -714,9 +694,6 @@
   const STEPS = 8, ROWS = 6;
   const notePitches = [523.25, 466.16, 392.00, 349.23, 293.66, 261.63];
   let tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
-  let handTuneMode = false;
-  let handDetected = false;
-  let currentGesture = { curl: 0, tilt: 0, spread: 0, height: 0.5 };
 
   function buildGrid(){
     tuneGrid.innerHTML = '';
@@ -739,7 +716,7 @@
   buildGrid();
 
   document.getElementById('openTunes').addEventListener('click', () => tunesOverlay.classList.add('open'));
-  document.getElementById('closeTunes').addEventListener('click', () => { tunesOverlay.classList.remove('open'); });
+  document.getElementById('closeTunes').addEventListener('click', () => tunesOverlay.classList.remove('open'));
   document.getElementById('tuneClear').addEventListener('click', () => {
     tuneState = Array.from({length: ROWS}, () => Array(STEPS).fill(false));
     buildGrid();
@@ -786,15 +763,13 @@
   }
   renderSavedTunes();
 
- const tuneModeBadge = document.getElementById('tuneModeBadge');
-
+  const tuneModeBadge = document.getElementById('tuneModeBadge');
   document.getElementById('tuneDone').addEventListener('click', () => {
     handTuneMode = true;
     tunesOverlay.classList.remove('open');
     tuneModeBadge.classList.add('show');
     if(!tunePlaying) startTune();
   });
-
   document.getElementById('exitTuneMode').addEventListener('click', () => {
     handTuneMode = false;
     tuneModeBadge.classList.remove('show');
@@ -802,6 +777,7 @@
   });
 
   let tuneCtx, tuneFilterNode, tuneTimer, tuneStep = 0, tunePlaying = false;
+  const tunePlayBtn = document.getElementById('tunePlay');
 
   function ensureTuneAudio(){
     if(!tuneCtx){
@@ -812,7 +788,6 @@
       tuneFilterNode.connect(tuneCtx.destination);
     }
   }
-  const tunePlayBtn = document.getElementById('tunePlay');
 
   tunePlayBtn.addEventListener('click', () => {
     tunePlaying ? stopTune() : startTune();
@@ -827,7 +802,6 @@
     const tick = () => {
       document.querySelectorAll('.tune-cell').forEach(c => c.classList.remove('playing-col'));
 
-      // curl = tone: closed fist darkens the filter, just like the main instrument
       tuneFilterNode.frequency.setTargetAtTime(
         handTuneMode ? 300 + (1 - currentGesture.curl) * 5000 : 4000,
         tuneCtx.currentTime, 0.05
@@ -849,7 +823,6 @@
           osc.start();
           osc.stop(tuneCtx.currentTime + 0.25);
 
-          // spread = width: fan your fingers to add a detuned second voice
           if(spreadNorm > 0.15){
             const osc2 = tuneCtx.createOscillator();
             const g2 = tuneCtx.createGain();
@@ -877,6 +850,37 @@
     clearTimeout(tuneTimer);
     document.querySelectorAll('.tune-cell').forEach(c => c.classList.remove('playing-col'));
   }
+
+  /* ---------- Settings ---------- */
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  document.getElementById('openSettings')?.addEventListener('click', async () => {
+    settingsOverlay.classList.add('open');
+    const res = await fetch('/api/user');
+    const data = await res.json();
+    document.getElementById('settingsUsername').value = data.username || '';
+  });
+  document.getElementById('closeSettings').addEventListener('click', () => settingsOverlay.classList.remove('open'));
+
+  document.getElementById('saveUsernameBtn').addEventListener('click', async () => {
+    const username = document.getElementById('settingsUsername').value.trim();
+    const res = await fetch('/api/user/username', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({username})
+    });
+    if(res.ok){ location.reload(); }
+    else{
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Could not update username.');
+    }
+  });
+
+  document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+    if(!confirm('This permanently deletes your account. Continue?')) return;
+    const res = await fetch('/api/user/delete', { method: 'POST', credentials: 'include' });
+    if(res.ok){ window.location.href = '/'; }
+  });
 </script>
 </body>
 </html>
