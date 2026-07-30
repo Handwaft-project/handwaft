@@ -114,19 +114,21 @@
   .modal-sub{ font-size:12px; color:var(--muted); margin-bottom:14px; }
   .search-input{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.03);
     color:var(--text); font-size:13px; margin-bottom:14px; }
-  .track-row{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; border:1px solid transparent; }
+  .track-row{ display:flex; align-items:center; gap:8px; padding:8px; border-radius:10px; border:1px solid transparent; }
   .track-row:hover{ background:rgba(255,255,255,0.03); }
   .track-row img{ width:36px; height:36px; border-radius:6px; object-fit:cover; }
   .track-meta{ flex:1; min-width:0; }
   .track-meta .t{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .track-meta .a{ font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .track-row input[type=checkbox]{ accent-color: var(--violet); width:16px; height:16px; }
-  .track-row .play-btn{ width:28px; height:28px; border-radius:50%; border:1px solid var(--border); background:none; color:var(--teal); cursor:pointer; font-size:11px; }
+  .track-row input[type=checkbox]{ accent-color: var(--violet); width:16px; height:16px; flex-shrink:0; }
+  .track-row .play-btn, .track-row .hand-btn{ width:28px; height:28px; border-radius:50%; border:1px solid var(--border); background:none; cursor:pointer; font-size:12px; flex-shrink:0; }
+  .track-row .play-btn{ color:var(--teal); }
+  .track-row .hand-btn{ color:var(--violet); }
   .merge-bar{ display:none; margin-top:14px; padding:12px; border-radius:10px; background:rgba(123,97,255,0.08); border:1px solid rgba(123,97,255,0.3);
     align-items:center; justify-content:space-between; gap:10px; }
   .merge-bar.show{ display:flex; }
   .merge-bar span{ font-size:12px; color:var(--muted); }
-  .merge-btn{ padding:8px 14px; border-radius:8px; border:none; background:linear-gradient(135deg, var(--violet), var(--teal)); color:#0a0a12; font-weight:700; font-size:12px; cursor:pointer; }
+  .merge-btn{ padding:8px 14px; border-radius:8px; border:none; background:linear-gradient(135deg, var(--violet), var(--teal)); color:#0a0a12; font-weight:700; font-size:12px; cursor:pointer; flex-shrink:0; }
   .playlist-row{ padding:10px 8px; border-radius:10px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
   .playlist-row:hover{ background:rgba(255,255,255,0.03); }
   .playlist-row .cnt{ color:var(--muted); font-size:11.5px; }
@@ -151,7 +153,8 @@
 </style>
 </head>
 <body>
-  <header>
+
+<header>
   <div class="brand"><div class="mark">H</div><span>Handwaft</span></div>
   <div class="status">
     <button id="stopBtn">Stop</button>
@@ -236,24 +239,28 @@
     <li><b>Spread</b> — fan your fingers to widen the sound.</li>
     <li><b>Height</b> — raise your hand to raise the volume; a closed fist mutes it.</li>
     <li><b>Search 🔍</b> — search a free open music catalog, no account needed.</li>
+    <li><b>▶</b> — play a song normally. <b>🖐</b> — load it silently, then control it with your hand once you click Start playing.</li>
     <li><b>My playlists 🎧</b> — save searched tracks into your own named playlists.</li>
     <li><b>Merge</b> — tick two search results, then merge & play them together.</li>
     <li><b>Make tunes 🎹</b> — click the grid to place notes, save it, or hit Done to control it live with your hand.</li>
   </ul>
 </div>
-
 <div class="modal-overlay" id="searchOverlay">
   <div class="modal">
     <div class="modal-header">
       <h3>Search music</h3>
       <button id="closeSearch">✕</button>
     </div>
-    <div class="modal-sub">Free open catalog — no login needed, full tracks.</div>
+    <div class="modal-sub">Free open catalog — no login needed, full tracks. ▶ plays normally, 🖐 lets your hand control it.</div>
     <input type="text" class="search-input" id="searchInput" placeholder="Search for a song or artist…">
     <div id="searchResults"></div>
-    <div class="merge-bar show" id="nowPlayingBar" style="display:none;">
+    <div class="merge-bar" id="nowPlayingBar" style="display:none;">
       <span id="nowPlayingLabel">Not playing</span>
       <button class="merge-btn" id="stopTrackBtn" style="background:var(--coral); color:#1a0a06;">■ Stop</button>
+    </div>
+    <div class="merge-bar" id="mergeBar">
+      <span id="mergeLabel">0 of 2 selected</span>
+      <button class="merge-btn" id="mergeBtn" disabled>Merge &amp; play</button>
     </div>
     <div class="modal-sub" style="margin-top:14px;">Add selected to a playlist</div>
     <input type="text" class="search-input" id="newPlaylistName" placeholder="Playlist name">
@@ -386,7 +393,7 @@
     osc.start(); osc2.start();
   }
 
- let handTuneMode = false;
+  let handTuneMode = false;
   let trackHandMode = false;
   let handDetected = false;
   let currentGesture = { curl: 0, tilt: 0, spread: 0, height: 0.5 };
@@ -490,19 +497,18 @@
         updateUI(params, spreadNorm);
 
         if(trackHandMode && activeTrackAudio){
-          if(handDetected){
-            if(activeTrackAudio.paused) activeTrackAudio.play().catch(()=>{});
-            const muted = params.curl > 0.85;
-            activeTrackAudio.volume = muted ? 0 : Math.max(0, Math.min(1, params.height));
-            activeTrackAudio.playbackRate = Math.max(0.5, Math.min(2, 1 + params.tilt));
-          } else {
-            activeTrackAudio.pause();
-          }
+          if(activeTrackAudio.paused) activeTrackAudio.play().catch(()=>{});
+          const muted = params.curl > 0.85;
+          activeTrackAudio.volume = muted ? 0 : Math.max(0, Math.min(1, params.height));
+          activeTrackAudio.playbackRate = Math.max(0.5, Math.min(2, 1 + params.tilt));
         }
       } else {
         octx.clearRect(0,0,overlay.width, overlay.height);
         gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
         handDetected = false;
+        if(trackHandMode && activeTrackAudio){
+          activeTrackAudio.pause();
+        }
       }
     }
     requestAnimationFrame(loop);
@@ -520,6 +526,7 @@
     statusDot.classList.remove('live');
     statusText.textContent = 'Camera off';
     handTuneMode = false;
+    trackHandMode = false;
   });
 
   startBtn.addEventListener('click', async () => {
@@ -554,11 +561,30 @@
       console.error(err);
     }
   });
-
   /* ---------- Instructions side panel ---------- */
   const instructionsPanel = document.getElementById('instructionsPanel');
   document.getElementById('openHelp').addEventListener('click', () => instructionsPanel.classList.add('open'));
   document.getElementById('closeHelp').addEventListener('click', () => instructionsPanel.classList.remove('open'));
+
+  /* ---------- Now playing / stop ---------- */
+  const nowPlayingBar = document.getElementById('nowPlayingBar');
+  const nowPlayingLabel = document.getElementById('nowPlayingLabel');
+
+  function showNowPlaying(label){
+    nowPlayingLabel.textContent = label;
+    nowPlayingBar.style.display = 'flex';
+  }
+  function hideNowPlaying(){
+    nowPlayingBar.style.display = 'none';
+  }
+  function stopAllTrackAudio(){
+    if(activeTrackAudio){ activeTrackAudio.pause(); activeTrackAudio = null; }
+    activeMergeAudios.forEach(a => a.pause());
+    activeMergeAudios = [];
+    trackHandMode = false;
+    hideNowPlaying();
+  }
+  document.getElementById('stopTrackBtn').addEventListener('click', stopAllTrackAudio);
 
   /* ---------- Search music (Audius — free, no login, full tracks) ---------- */
   const searchOverlay = document.getElementById('searchOverlay');
@@ -598,8 +624,8 @@
       const items = (data.data || []).map(t => ({
         id: t.id,
         title: t.title,
-        artist: t.user?.name || 'Unknown',
-        artwork: t.artwork?.['150x150'] || '',
+        artist: (t.user && t.user.name) ? t.user.name : 'Unknown',
+        artwork: (t.artwork && t.artwork['150x150']) ? t.artwork['150x150'] : '',
         previewUrl: `${host}/v1/tracks/${t.id}/stream?app_name=Handwaft`,
         externalUrl: t.permalink ? `https://audius.co${t.permalink}` : null
       }));
@@ -616,15 +642,16 @@
     items.forEach(item => {
       const row = document.createElement('div');
       row.className = 'track-row';
-      row.innerHTML = `
-        <input type="checkbox" data-id="${item.id}">
-        <img src="${item.artwork || ''}" onerror="this.style.visibility='hidden'">
-        <div class="track-meta">
-          <div class="t">${item.title}</div>
-          <div class="a">${item.artist}</div>
-        </div>
-        <button class="play-btn">▶</button>
-      `;
+      row.innerHTML =
+        '<input type="checkbox" data-id="' + item.id + '">' +
+        '<img src="' + (item.artwork || '') + '" onerror="this.style.visibility=\'hidden\'">' +
+        '<div class="track-meta">' +
+          '<div class="t">' + item.title + '</div>' +
+          '<div class="a">' + item.artist + '</div>' +
+        '</div>' +
+        '<button class="play-btn" title="Play normally">▶</button>' +
+        '<button class="hand-btn" title="Play with hand gestures">🖐</button>';
+
       const checkbox = row.querySelector('input');
       const playBtn = row.querySelector('.play-btn');
       const handBtn = row.querySelector('.hand-btn');
@@ -643,7 +670,7 @@
         stopAllTrackAudio();
         const audio = new Audio(item.previewUrl);
         audio.volume = 0.8;
-        audio.play();
+        audio.play().catch(err => console.error(err));
         activeTrackAudio = audio;
         showNowPlaying(item.title + ' — ' + item.artist);
         audio.onended = () => hideNowPlaying();
@@ -663,48 +690,30 @@
   }
 
   function updateMergeBar(){
-    mergeLabel.textContent = `${selectedTracks.length} of 2 selected`;
+    mergeLabel.textContent = selectedTracks.length + ' of 2 selected';
     mergeBar.classList.toggle('show', selectedTracks.length > 0);
     mergeBtn.disabled = selectedTracks.length !== 2;
   }
-  const nowPlayingBar = document.getElementById('nowPlayingBar');
-  const nowPlayingLabel = document.getElementById('nowPlayingLabel');
 
-  function showNowPlaying(label){
-    nowPlayingLabel.textContent = label;
-    nowPlayingBar.style.display = 'flex';
-  }
-  function hideNowPlaying(){
-    nowPlayingBar.style.display = 'none';
-  }
-  function stopAllTrackAudio(){
-    if(activeTrackAudio){ activeTrackAudio.pause(); activeTrackAudio = null; }
-    activeMergeAudios.forEach(a => a.pause());
-    activeMergeAudios = [];
-    trackHandMode = false;
-    hideNowPlaying();
-  }
-  document.getElementById('stopTrackBtn').addEventListener('click', stopAllTrackAudio);
-
- mergeBtn.addEventListener('click', () => {
+  mergeBtn.addEventListener('click', () => {
     stopAllTrackAudio();
     activeMergeAudios = selectedTracks.map(t => {
       const el = new Audio(t.previewUrl);
       el.volume = 0.8;
-      el.play();
+      el.play().catch(err => console.error(err));
       return el;
     });
     showNowPlaying('Merging: ' + selectedTracks.map(t => t.title).join(' + '));
   });
 
-  /* ---------- My playlists (local, no login-tied Spotify needed) ---------- */
+  /* ---------- My playlists (local, no external account needed) ---------- */
   document.getElementById('addToPlaylistBtn').addEventListener('click', () => {
     const name = document.getElementById('newPlaylistName').value.trim();
     if(!name || selectedTracks.length === 0){ alert('Pick a name and select at least one track first.'); return; }
     const playlists = JSON.parse(localStorage.getItem('handwaft_playlists') || '{}');
     playlists[name] = (playlists[name] || []).concat(selectedTracks);
     localStorage.setItem('handwaft_playlists', JSON.stringify(playlists));
-    alert(`Added to "${name}"`);
+    alert('Added to "' + name + '"');
   });
 
   const playlistsOverlay = document.getElementById('playlistsOverlay');
@@ -723,7 +732,7 @@
     names.forEach(name => {
       const row = document.createElement('div');
       row.className = 'playlist-row';
-      row.innerHTML = `<span>${name}</span><span class="cnt">${playlists[name].length} tracks</span>`;
+      row.innerHTML = '<span>' + name + '</span><span class="cnt">' + playlists[name].length + ' tracks</span>';
       row.addEventListener('click', () => {
         renderResults(playlists[name]);
         playlistsOverlay.classList.remove('open');
@@ -732,6 +741,7 @@
       list.appendChild(row);
     });
   }
+
   /* ---------- Make your own tunes ---------- */
   const tunesOverlay = document.getElementById('tunesOverlay');
   const tuneGrid = document.getElementById('tuneGrid');
@@ -785,20 +795,19 @@
     names.forEach(name => {
       const row = document.createElement('div');
       row.className = 'playlist-row saved-tune-row';
-      row.innerHTML = `
-        <span class="saved-tune-name">${name}</span>
-        <div class="saved-tune-actions">
-          <span class="cnt load-tune">load</span>
-          <button class="delete-tune-btn" title="Delete this tune">🗑</button>
-        </div>
-      `;
+      row.innerHTML =
+        '<span class="saved-tune-name">' + name + '</span>' +
+        '<div class="saved-tune-actions">' +
+          '<span class="cnt load-tune">load</span>' +
+          '<button class="delete-tune-btn" title="Delete this tune">🗑</button>' +
+        '</div>';
       row.querySelector('.load-tune').addEventListener('click', () => {
         tuneState = saved[name];
         buildGrid();
       });
       row.querySelector('.delete-tune-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        if(!confirm(`Delete "${name}"? This can't be undone.`)) return;
+        if(!confirm('Delete "' + name + '"? This can\'t be undone.')) return;
         delete saved[name];
         localStorage.setItem('handwaft_tunes', JSON.stringify(saved));
         renderSavedTunes();
@@ -879,7 +888,7 @@
             osc2.stop(tuneCtx.currentTime + 0.25);
           }
         }
-        const cell = document.querySelector(`.tune-cell[data-row="${r}"][data-col="${tuneStep}"]`);
+        const cell = document.querySelector('.tune-cell[data-row="' + r + '"][data-col="' + tuneStep + '"]');
         if(cell) cell.classList.add('playing-col');
       }
       tuneStep = (tuneStep + 1) % STEPS;
@@ -898,12 +907,15 @@
 
   /* ---------- Settings ---------- */
   const settingsOverlay = document.getElementById('settingsOverlay');
-  document.getElementById('openSettings')?.addEventListener('click', async () => {
-    settingsOverlay.classList.add('open');
-    const res = await fetch('/api/user');
-    const data = await res.json();
-    document.getElementById('settingsUsername').value = data.username || '';
-  });
+  const openSettingsBtn = document.getElementById('openSettings');
+  if(openSettingsBtn){
+    openSettingsBtn.addEventListener('click', async () => {
+      settingsOverlay.classList.add('open');
+      const res = await fetch('/api/user');
+      const data = await res.json();
+      document.getElementById('settingsUsername').value = data.username || '';
+    });
+  }
   document.getElementById('closeSettings').addEventListener('click', () => settingsOverlay.classList.remove('open'));
 
   document.getElementById('saveUsernameBtn').addEventListener('click', async () => {
@@ -912,7 +924,7 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       credentials: 'include',
-      body: JSON.stringify({username})
+      body: JSON.stringify({username: username})
     });
     if(res.ok){ location.reload(); }
     else{
